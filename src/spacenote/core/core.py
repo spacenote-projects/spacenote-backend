@@ -1,0 +1,132 @@
+from __future__ import annotations
+
+import importlib
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from typing import Any, cast
+from urllib.parse import urlparse
+
+from pymongo import AsyncMongoClient
+from pymongo.asynchronous.database import AsyncDatabase
+
+from spacenote.config import Config
+
+
+class Service:
+    """Base class for services with direct database access."""
+
+    def __init__(self, database: AsyncDatabase[dict[str, Any]]) -> None:
+        self.database = database
+        self._core: Core | None = None
+
+    async def on_start(self) -> None:
+        """Initialize service on application startup."""
+
+    async def on_stop(self) -> None:
+        """Cleanup service on application shutdown."""
+
+    @property
+    def core(self) -> Core:
+        """Get the core application context."""
+        if self._core is None:
+            raise RuntimeError("Core not set for service")
+        return self._core
+
+    def set_core(self, core: Core) -> None:
+        """Set the core application context."""
+        self._core = core
+
+
+class Services:
+    """Service registry that automatically discovers and initializes services."""
+
+    from spacenote.core.modules.session.service import SessionService  # noqa: PLC0415
+    from spacenote.core.modules.user.service import UserService  # noqa: PLC0415
+
+    user: UserService
+    session: SessionService
+    # space: SpaceService
+
+    # access: AccessService
+    # note: NoteService
+    # counter: CounterService
+    # comment: CommentService
+    # export: ExportService
+
+    def __init__(self, database: AsyncDatabase[dict[str, Any]]) -> None:
+        """Initialize all services automatically using service configuration."""
+        self._services: list[Service] = []
+        self._database = database
+
+        # Service configuration: (attribute_name, module_path, class_name)
+        # Order matters for initialization - user and space must be first
+        service_configs = [
+            ("user", "spacenote.core.modules.user.service", "UserService"),
+            # ("space", "spacenote.core.space.service", "SpaceService"),
+            ("session", "spacenote.core.modules.session.service", "SessionService"),
+            # ("access", "spacenote.core.access.service", "AccessService"),
+            # ("counter", "spacenote.core.counter.service", "CounterService"),
+            # ("note", "spacenote.core.note.service", "NoteService"),
+            # ("comment", "spacenote.core.comment.service", "CommentService"),
+            # ("export", "spacenote.core.export.service", "ExportService"),
+        ]
+
+        # Dynamically import and instantiate services
+        for attr_name, module_path, class_name in service_configs:
+            module = importlib.import_module(module_path)
+            service_class = cast(type[Service], getattr(module, class_name))
+            service_instance = service_class(database)
+            setattr(self, attr_name, service_instance)
+            self._services.append(service_instance)
+
+    def set_core(self, core: Core) -> None:
+        """Set core reference for all services."""
+        for service in self._services:
+            service.set_core(core)
+
+    async def start_all(self) -> None:
+        """Start all services that have startup logic."""
+        for service in self._services:
+            if hasattr(service, "on_start"):
+                await service.on_start()
+
+    async def stop_all(self) -> None:
+        """Stop all services that have cleanup logic."""
+        for service in self._services:
+            if hasattr(service, "on_stop"):
+                await service.on_stop()
+
+
+class Core:
+    """Core application class that manages the lifecycle and database."""
+
+    config: Config
+    mongo_client: AsyncMongoClient[dict[str, Any]]
+    database: AsyncDatabase[dict[str, Any]]
+    services: Services
+
+    def __init__(self, config: Config) -> None:
+        """Initialize the core application with configuration."""
+
+        self.config = config
+        self.mongo_client = AsyncMongoClient(config.database_url, uuidRepresentation="standard")
+        self.database = self.mongo_client.get_database(urlparse(config.database_url).path[1:])
+        self.services = Services(self.database)
+        self.services.set_core(self)
+
+    @asynccontextmanager
+    async def lifespan(self) -> AsyncGenerator[None]:
+        await self.on_start()
+        try:
+            yield
+        finally:
+            await self.on_stop()
+
+    async def on_start(self) -> None:
+        """Initialize the application on startup."""
+        await self.services.start_all()
+
+    async def on_stop(self) -> None:
+        """Cleanup on application shutdown."""
+        await self.services.stop_all()
+        await self.mongo_client.aclose()
