@@ -40,6 +40,7 @@ class Service:
 class Services:
     """Service registry that automatically discovers and initializes services."""
 
+    from spacenote.core.modules.access.service import AccessService  # noqa: PLC0415
     from spacenote.core.modules.session.service import SessionService  # noqa: PLC0415
     from spacenote.core.modules.user.service import UserService  # noqa: PLC0415
 
@@ -47,7 +48,7 @@ class Services:
     session: SessionService
     # space: SpaceService
 
-    # access: AccessService
+    access: AccessService
     # note: NoteService
     # counter: CounterService
     # comment: CommentService
@@ -64,7 +65,7 @@ class Services:
             ("user", "spacenote.core.modules.user.service", "UserService"),
             # ("space", "spacenote.core.space.service", "SpaceService"),
             ("session", "spacenote.core.modules.session.service", "SessionService"),
-            # ("access", "spacenote.core.access.service", "AccessService"),
+            ("access", "spacenote.core.modules.access.service", "AccessService"),
             # ("counter", "spacenote.core.counter.service", "CounterService"),
             # ("note", "spacenote.core.note.service", "NoteService"),
             # ("comment", "spacenote.core.comment.service", "CommentService"),

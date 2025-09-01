@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Response
 from pydantic import BaseModel, Field
 
-from spacenote.web.deps import AppDep
+from spacenote.web.deps import AppDep, AuthTokenDep
 from spacenote.web.openapi import ErrorResponse
 
 router = APIRouter(tags=["auth"])
@@ -47,18 +47,18 @@ async def login(login_data: LoginRequest, app: AppDep, response: Response) -> Lo
     return LoginResponse(auth_token=auth_token)
 
 
-# @router.post(
-#     "/auth/logout",
-#     summary="End session",
-#     description="Invalidate the current authentication session.",
-#     operation_id="logout",
-#     responses={
-#         200: {"description": "Successfully logged out"},
-#         401: {"model": ErrorResponse, "description": "Not authenticated"},
-#     },
-# )
-# async def logout(app: AppDep, auth_token: AuthTokenDep, response: Response) -> dict[str, str]:
-#     """Logout and invalidate session."""
-#     await app.logout(auth_token)
-#     response.delete_cookie("auth_token")
-#     return {"message": "Logged out successfully"}
+@router.post(
+    "/auth/logout",
+    summary="End session",
+    description="Invalidate the current authentication session.",
+    operation_id="logout",
+    responses={
+        200: {"description": "Successfully logged out"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+    },
+)
+async def logout(app: AppDep, auth_token: AuthTokenDep, response: Response) -> dict[str, str]:
+    """Logout and invalidate session."""
+    await app.logout(auth_token)
+    response.delete_cookie("auth_token")
+    return {"message": "Logged out successfully"}

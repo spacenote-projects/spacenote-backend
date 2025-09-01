@@ -50,6 +50,13 @@ class SessionService(Service):
         self._authenticated_users[auth_token] = user
         return user
 
+    async def is_auth_token_valid(self, auth_token: AuthToken) -> bool:
+        try:
+            await self.get_authenticated_user(auth_token)
+        except AuthenticationError:
+            return False
+        return True
+
     async def invalidate_session(self, auth_token: AuthToken) -> None:
         """Invalidate a session by removing it from the database."""
         if auth_token in self._authenticated_users:
