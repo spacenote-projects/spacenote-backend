@@ -4,7 +4,8 @@ from contextlib import asynccontextmanager
 from spacenote.config import Config
 from spacenote.core.core import Core
 from spacenote.core.modules.session.models import AuthToken
-from spacenote.core.modules.user.models import User
+from spacenote.core.modules.space.models import Space
+from spacenote.core.modules.user.models import User, UserView
 from spacenote.errors import AuthenticationError
 
 
@@ -30,6 +31,26 @@ class App:
     async def logout(self, auth_token: AuthToken) -> None:
         await self._core.services.access.ensure_authenticated(auth_token)
         await self._core.services.session.invalidate_session(auth_token)
+
+    async def get_all_users(self, auth_token: AuthToken) -> list[UserView]:
+        """Get all users."""
+        await self._core.services.access.ensure_authenticated(auth_token)
+        users = self._core.services.user.get_all_users()
+        return [UserView.from_domain(user) for user in users]
+
+    async def create_user(self, auth_token: AuthToken, username: str, password: str) -> UserView:
+        """Create a new user."""
+        await self._core.services.access.ensure_admin(auth_token)
+        user = await self._core.services.user.create_user(username, password)
+        return UserView.from_domain(user)
+
+    async def get_spaces_by_member(self, auth_token: AuthToken) -> list[Space]:
+        current_user = await self._core.services.access.ensure_authenticated(auth_token)
+        return self._core.services.space.get_spaces_by_member(current_user.id)
+
+    async def create_space(self, auth_token: AuthToken, slug: str, title: str) -> Space:
+        current_user = await self._core.services.access.ensure_authenticated(auth_token)
+        return await self._core.services.space.create_space(slug, title, current_user.id)
 
     # === Private resolver methods ===
     def _resolve_user(self, username: str) -> User:

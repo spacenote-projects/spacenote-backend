@@ -3,7 +3,6 @@ from uuid import UUID
 
 import bcrypt
 import structlog
-from bson import ObjectId
 from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
@@ -30,7 +29,7 @@ class UserService(Service):
             raise NotFoundError(f"User '{username}' not found")
         return user
 
-    def has_user(self, id: ObjectId) -> bool:
+    def has_user(self, id: UUID) -> bool:
         return id in self._users
 
     def has_username(self, username: str) -> bool:

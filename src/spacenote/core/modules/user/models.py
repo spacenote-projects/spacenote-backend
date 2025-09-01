@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 from spacenote.core.db import MongoModel
@@ -11,9 +13,10 @@ class User(MongoModel):
 class UserView(BaseModel):
     """User account information (API representation)."""
 
+    id: UUID = Field(..., description="User ID")
     username: str = Field(..., description="Username")
 
     @classmethod
     def from_domain(cls, user: User) -> "UserView":
         """Create view model from domain model."""
-        return cls(username=user.username)
+        return cls(id=user.id, username=user.username)

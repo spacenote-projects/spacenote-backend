@@ -42,17 +42,13 @@ class Services:
 
     from spacenote.core.modules.access.service import AccessService  # noqa: PLC0415
     from spacenote.core.modules.session.service import SessionService  # noqa: PLC0415
+    from spacenote.core.modules.space.service import SpaceService  # noqa: PLC0415
     from spacenote.core.modules.user.service import UserService  # noqa: PLC0415
 
     user: UserService
+    space: SpaceService
     session: SessionService
-    # space: SpaceService
-
     access: AccessService
-    # note: NoteService
-    # counter: CounterService
-    # comment: CommentService
-    # export: ExportService
 
     def __init__(self, database: AsyncDatabase[dict[str, Any]]) -> None:
         """Initialize all services automatically using service configuration."""
@@ -63,13 +59,9 @@ class Services:
         # Order matters for initialization - user and space must be first
         service_configs = [
             ("user", "spacenote.core.modules.user.service", "UserService"),
-            # ("space", "spacenote.core.space.service", "SpaceService"),
+            ("space", "spacenote.core.modules.space.service", "SpaceService"),
             ("session", "spacenote.core.modules.session.service", "SessionService"),
             ("access", "spacenote.core.modules.access.service", "AccessService"),
-            # ("counter", "spacenote.core.counter.service", "CounterService"),
-            # ("note", "spacenote.core.note.service", "NoteService"),
-            # ("comment", "spacenote.core.comment.service", "CommentService"),
-            # ("export", "spacenote.core.export.service", "ExportService"),
         ]
 
         # Dynamically import and instantiate services
