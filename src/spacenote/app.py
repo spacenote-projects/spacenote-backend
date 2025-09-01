@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from spacenote.config import Config
 from spacenote.core.core import Core
+from spacenote.core.modules.comment.models import Comment
 from spacenote.core.modules.field.models import SpaceField
 from spacenote.core.modules.note.models import Note
 from spacenote.core.modules.session.models import AuthToken
@@ -75,6 +76,17 @@ class App:
         current_user = await self._core.services.access.ensure_authenticated(auth_token)
         return await self._core.services.note.create_note(space.id, current_user.id, raw_fields)
 
+    async def get_note_comments(self, auth_token: AuthToken, space_slug: str, note_number: int) -> list[Comment]:
+        space, note = await self._resolve_note(space_slug, note_number)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.comment.get_note_comments(note.id)
+
+    async def create_comment(self, auth_token: AuthToken, space_slug: str, note_number: int, content: str) -> Comment:
+        space, note = await self._resolve_note(space_slug, note_number)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        current_user = await self._core.services.session.get_authenticated_user(auth_token)
+        return await self._core.services.comment.create_comment(note.id, space.id, current_user.id, content)
+
     # === Private resolver methods ===
     def _resolve_space(self, slug: str) -> Space:
         """Resolve space slug to Space object. Raises NotFoundError if not found."""
@@ -83,3 +95,9 @@ class App:
     def _resolve_user(self, username: str) -> User:
         """Resolve username to User object. Raises NotFoundError if not found."""
         return self._core.services.user.get_user_by_username(username)
+
+    async def _resolve_note(self, space_slug: str, number: int) -> tuple[Space, Note]:
+        """Resolve space slug and note number to Space and Note objects."""
+        space = self._resolve_space(space_slug)
+        note = await self._core.services.note.get_note_by_number(space.id, number)
+        return space, note
