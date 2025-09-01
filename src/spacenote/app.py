@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from spacenote.config import Config
 from spacenote.core.core import Core
 from spacenote.core.modules.field.models import SpaceField
+from spacenote.core.modules.note.models import Note
 from spacenote.core.modules.session.models import AuthToken
 from spacenote.core.modules.space.models import Space
 from spacenote.core.modules.user.models import User, UserView
@@ -57,6 +58,22 @@ class App:
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         return await self._core.services.space.add_field(space.id, field)
+
+    async def get_notes_by_space(self, auth_token: AuthToken, space_slug: str) -> list[Note]:
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.note.list_notes(space.id)
+
+    async def get_note_by_number(self, auth_token: AuthToken, space_slug: str, number: int) -> Note:
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.note.get_note_by_number(space.id, number)
+
+    async def create_note(self, auth_token: AuthToken, space_slug: str, raw_fields: dict[str, str]) -> Note:
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        current_user = await self._core.services.access.ensure_authenticated(auth_token)
+        return await self._core.services.note.create_note(space.id, current_user.id, raw_fields)
 
     # === Private resolver methods ===
     def _resolve_space(self, slug: str) -> Space:

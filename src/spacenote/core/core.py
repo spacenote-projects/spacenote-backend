@@ -41,6 +41,8 @@ class Services:
     """Service registry that automatically discovers and initializes services."""
 
     from spacenote.core.modules.access.service import AccessService  # noqa: PLC0415
+    from spacenote.core.modules.counter.service import CounterService  # noqa: PLC0415
+    from spacenote.core.modules.note.service import NoteService  # noqa: PLC0415
     from spacenote.core.modules.session.service import SessionService  # noqa: PLC0415
     from spacenote.core.modules.space.service import SpaceService  # noqa: PLC0415
     from spacenote.core.modules.user.service import UserService  # noqa: PLC0415
@@ -49,6 +51,8 @@ class Services:
     space: SpaceService
     session: SessionService
     access: AccessService
+    counter: CounterService
+    note: NoteService
 
     def __init__(self, database: AsyncDatabase[dict[str, Any]]) -> None:
         """Initialize all services automatically using service configuration."""
@@ -62,6 +66,8 @@ class Services:
             ("space", "spacenote.core.modules.space.service", "SpaceService"),
             ("session", "spacenote.core.modules.session.service", "SessionService"),
             ("access", "spacenote.core.modules.access.service", "AccessService"),
+            ("counter", "spacenote.core.modules.counter.service", "CounterService"),
+            ("note", "spacenote.core.modules.note.service", "NoteService"),
         ]
 
         # Dynamically import and instantiate services
