@@ -1,3 +1,5 @@
+"""Application entry point for SpaceNote backend server."""
+
 import uvicorn
 
 from spacenote.app import App

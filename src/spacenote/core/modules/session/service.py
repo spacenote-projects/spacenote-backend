@@ -28,12 +28,14 @@ class SessionService(Service):
         await self._collection.create_index([("created_at", 1)], expireAfterSeconds=30 * 24 * 60 * 60)
 
     async def create_session(self, user_id: UUID) -> AuthToken:
+        """Create a new session for a user and return the auth token."""
         auth_token = AuthToken(secrets.token_urlsafe(32))
         new_session = Session(user_id=user_id, auth_token=auth_token)
         await self._collection.insert_one(new_session.to_mongo())
         return auth_token
 
     async def get_authenticated_user(self, auth_token: AuthToken) -> User:
+        """Get the authenticated user for a given auth token, with caching."""
         # Check cache first
         if auth_token in self._authenticated_users:
             return self._authenticated_users[auth_token]
@@ -51,6 +53,7 @@ class SessionService(Service):
         return user
 
     async def is_auth_token_valid(self, auth_token: AuthToken) -> bool:
+        """Check if an auth token is valid without raising exceptions."""
         try:
             await self.get_authenticated_user(auth_token)
         except AuthenticationError:

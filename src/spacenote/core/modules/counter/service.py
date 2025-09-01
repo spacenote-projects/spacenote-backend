@@ -9,6 +9,8 @@ from spacenote.core.modules.counter.models import CounterType
 
 
 class CounterService(Service):
+    """Service for managing auto-incrementing counters per space."""
+
     def __init__(self, database: AsyncDatabase[dict[str, Any]]) -> None:
         super().__init__(database)
         self._collection = database.get_collection("counters")

@@ -100,7 +100,7 @@ class Services:
 
 
 class Core:
-    """Core application class that manages the lifecycle and database."""
+    """Container providing config, database, and all service instances."""
 
     config: Config
     mongo_client: AsyncMongoClient[dict[str, Any]]
@@ -108,8 +108,7 @@ class Core:
     services: Services
 
     def __init__(self, config: Config) -> None:
-        """Initialize the core application with configuration."""
-
+        """Initialize core with config, MongoDB, and auto-register services."""
         self.config = config
         self.mongo_client = AsyncMongoClient(config.database_url, uuidRepresentation="standard")
         self.database = self.mongo_client.get_database(urlparse(config.database_url).path[1:])
@@ -118,6 +117,7 @@ class Core:
 
     @asynccontextmanager
     async def lifespan(self) -> AsyncGenerator[None]:
+        """Manage application lifecycle - startup and shutdown."""
         await self.on_start()
         try:
             yield
@@ -125,10 +125,10 @@ class Core:
             await self.on_stop()
 
     async def on_start(self) -> None:
-        """Initialize the application on startup."""
+        """Start all services on application startup."""
         await self.services.start_all()
 
     async def on_stop(self) -> None:
-        """Cleanup on application shutdown."""
+        """Stop services and close MongoDB connection on shutdown."""
         await self.services.stop_all()
         await self.mongo_client.aclose()

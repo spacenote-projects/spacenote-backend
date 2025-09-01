@@ -26,7 +26,6 @@ class CreateUserRequest(BaseModel):
     },
 )
 async def list_users(app: AppDep, auth_token: AuthTokenDep) -> list[UserView]:
-    """Get all users."""
     return await app.get_all_users(auth_token)
 
 
@@ -44,5 +43,4 @@ async def list_users(app: AppDep, auth_token: AuthTokenDep) -> list[UserView]:
     status_code=201,
 )
 async def create_user(create_data: CreateUserRequest, app: AppDep, auth_token: AuthTokenDep) -> UserView:
-    """Create a new user (admin only)."""
     return await app.create_user(auth_token, create_data.username, create_data.password)

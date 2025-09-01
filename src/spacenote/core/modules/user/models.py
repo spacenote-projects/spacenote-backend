@@ -6,6 +6,8 @@ from spacenote.core.db import MongoModel
 
 
 class User(MongoModel):
+    """User domain model with credentials."""
+
     username: str
     password_hash: str  # bcrypt hash
 

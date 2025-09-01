@@ -7,6 +7,8 @@ from spacenote.errors import AccessDeniedError
 
 
 class AccessService(Service):
+    """Service for managing user access control and permissions."""
+
     async def ensure_authenticated(self, auth_token: AuthToken) -> User:
         """Ensure the user is authenticated."""
         return await self.core.services.session.get_authenticated_user(auth_token)

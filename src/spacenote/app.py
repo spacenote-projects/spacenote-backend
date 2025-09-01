@@ -13,6 +13,8 @@ from spacenote.errors import AuthenticationError
 
 
 class App:
+    """Facade for all application operations, validates permissions before delegating to Core."""
+
     def __init__(self, config: Config) -> None:
         self._core = Core(config)
 
@@ -23,65 +25,76 @@ class App:
             yield
 
     async def is_auth_token_valid(self, auth_token: AuthToken) -> bool:
+        """Check if authentication token is valid."""
         return await self._core.services.session.is_auth_token_valid(auth_token)
 
     async def login(self, username: str, password: str) -> AuthToken:
+        """Authenticate user and create session."""
         if not self._core.services.user.verify_password(username, password):
             raise AuthenticationError
         user = self._resolve_user(username)
         return await self._core.services.session.create_session(user.id)
 
     async def logout(self, auth_token: AuthToken) -> None:
+        """Invalidate user session."""
         await self._core.services.access.ensure_authenticated(auth_token)
         await self._core.services.session.invalidate_session(auth_token)
 
     async def get_all_users(self, auth_token: AuthToken) -> list[UserView]:
-        """Get all users."""
+        """Get all users (requires authentication)."""
         await self._core.services.access.ensure_authenticated(auth_token)
         users = self._core.services.user.get_all_users()
         return [UserView.from_domain(user) for user in users]
 
     async def create_user(self, auth_token: AuthToken, username: str, password: str) -> UserView:
-        """Create a new user."""
+        """Create a new user (admin only)."""
         await self._core.services.access.ensure_admin(auth_token)
         user = await self._core.services.user.create_user(username, password)
         return UserView.from_domain(user)
 
     async def get_spaces_by_member(self, auth_token: AuthToken) -> list[Space]:
+        """Get spaces where current user is a member."""
         current_user = await self._core.services.access.ensure_authenticated(auth_token)
         return self._core.services.space.get_spaces_by_member(current_user.id)
 
     async def create_space(self, auth_token: AuthToken, slug: str, title: str) -> Space:
+        """Create new space with current user as owner."""
         current_user = await self._core.services.access.ensure_authenticated(auth_token)
         return await self._core.services.space.create_space(slug, title, current_user.id)
 
     async def add_field_to_space(self, auth_token: AuthToken, space_slug: str, field: SpaceField) -> Space:
+        """Add custom field to space (members only)."""
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         return await self._core.services.space.add_field(space.id, field)
 
     async def get_notes_by_space(self, auth_token: AuthToken, space_slug: str) -> list[Note]:
+        """Get all notes in space (members only)."""
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         return await self._core.services.note.list_notes(space.id)
 
     async def get_note_by_number(self, auth_token: AuthToken, space_slug: str, number: int) -> Note:
+        """Get specific note by number (members only)."""
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         return await self._core.services.note.get_note_by_number(space.id, number)
 
     async def create_note(self, auth_token: AuthToken, space_slug: str, raw_fields: dict[str, str]) -> Note:
+        """Create note with custom fields (members only)."""
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         current_user = await self._core.services.access.ensure_authenticated(auth_token)
         return await self._core.services.note.create_note(space.id, current_user.id, raw_fields)
 
     async def get_note_comments(self, auth_token: AuthToken, space_slug: str, note_number: int) -> list[Comment]:
+        """Get comments for note (members only)."""
         space, note = await self._resolve_note(space_slug, note_number)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         return await self._core.services.comment.get_note_comments(note.id)
 
     async def create_comment(self, auth_token: AuthToken, space_slug: str, note_number: int, content: str) -> Comment:
+        """Add comment to note (members only)."""
         space, note = await self._resolve_note(space_slug, note_number)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         current_user = await self._core.services.session.get_authenticated_user(auth_token)

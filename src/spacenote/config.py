@@ -2,6 +2,8 @@ from pydantic_settings import BaseSettings
 
 
 class Config(BaseSettings):
+    """Application configuration loaded from environment variables."""
+
     database_url: str
     host: str
     port: int

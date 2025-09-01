@@ -58,7 +58,6 @@ async def login(login_data: LoginRequest, app: AppDep, response: Response) -> Lo
     },
 )
 async def logout(app: AppDep, auth_token: AuthTokenDep, response: Response) -> dict[str, str]:
-    """Logout and invalidate session."""
     await app.logout(auth_token)
     response.delete_cookie("auth_token")
     return {"message": "Logged out successfully"}
