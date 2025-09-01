@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environment
+.venv/
+
+# Environment variables
+.env
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Type checking
+.mypy_cache/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+
+# Agent process management
+backend.agent.pid
+backend.agent.log
+frontend.agent.pid
+frontend.agent.log
+
+
+# Session/Cookie files
+cookies.txt
+cookies-test.txt
+
+# Claude agent files
+.claude/
+
+# File uploads
+attachments/
+
+# Other
+tmp/

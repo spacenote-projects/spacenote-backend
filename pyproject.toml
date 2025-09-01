@@ -1,0 +1,86 @@
+[project]
+name = "spacenote"
+version = "0.0.1"
+description = "Flexible note-taking system with customizable spaces"
+requires-python = ">=3.13"
+dependencies = [
+    "bcrypt~=4.3.0",
+    "fastapi[standard]~=0.116.1",
+    "itsdangerous~=2.2.0",
+    "pydantic-settings~=2.10.1",
+    "pymongo~=4.14.1",
+    "python-dotenv~=1.1.1",
+    "structlog~=25.4.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest~=8.4.1",
+    "pytest-xdist~=3.8.0",
+    "pytest-httpserver~=1.1.3",
+    "ruff~=0.12.10",
+    "pip-audit~=2.9.0",
+    "bandit~=1.8.6",
+    "mypy~=1.17.1",
+    "watchfiles~=1.1.0",
+]
+
+[tool.mypy]
+python_version = "3.13"
+mypy_path = "stubs"
+warn_no_return = false
+strict = true
+plugins = "pydantic.mypy"
+exclude = ["^tests/", "^scripts/"]
+
+
+[tool.ruff]
+line-length = 130
+target-version = "py313"
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "TC",      # flake8-type-checking, TYPE_CHECKING is dangerous, for example it doesn't work with pydantic
+    "A005",    # flake8-builtins: stdlib-module-shadowing
+    "ERA001",  # eradicate: commented-out-code
+    "PT",      # flake8-pytest-style
+    "D",       # pydocstyle
+    "FIX",     # flake8-fixme
+    "PLR0911", # pylint: too-many-return-statements
+    "PLR0912", # pylint: too-many-branches
+    "PLR0913", # pylint: too-many-arguments
+    "PLR2004", # pylint: magic-value-comparison
+    "PLC0414", # pylint: useless-import-alias
+    "FBT",     # flake8-boolean-trap
+    "EM",      # flake8-errmsg
+    "TRY003",  # tryceratops: raise-vanilla-args
+    "C901",    # mccabe: complex-structure,
+    "BLE001",  # flake8-blind-except
+    "S311",    # bandit: suspicious-non-cryptographic-random-usage
+    "TD002",   # flake8-todos: missing-todo-author
+    "TD003",   # flake8-todos: missing-todo-link
+    "RET503",  # flake8-return: implicit-return
+    "RUF012",  # ruff: mutable-class-default
+    "COM812",  # it's used in ruff formatter
+]
+[tool.ruff.lint.flake8-builtins]
+builtins-ignorelist = ["id", "filter"]
+[tool.ruff.lint.pep8-naming]
+classmethod-decorators = ["field_validator"]
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["ANN", "S"]
+"scripts/*.py" = ["T201", "TRY300", "S110", "F841", "RUF005", "B007", "PERF102", "DTZ005", "F541"]
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B311"]
+
+[tool.pytest.ini_options]
+addopts = "-n auto"
