@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from spacenote.config import Config
 from spacenote.core.core import Core
+from spacenote.core.modules.field.models import SpaceField
 from spacenote.core.modules.session.models import AuthToken
 from spacenote.core.modules.space.models import Space
 from spacenote.core.modules.user.models import User, UserView
@@ -52,7 +53,16 @@ class App:
         current_user = await self._core.services.access.ensure_authenticated(auth_token)
         return await self._core.services.space.create_space(slug, title, current_user.id)
 
+    async def add_field_to_space(self, auth_token: AuthToken, space_slug: str, field: SpaceField) -> Space:
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.space.add_field(space.id, field)
+
     # === Private resolver methods ===
+    def _resolve_space(self, slug: str) -> Space:
+        """Resolve space slug to Space object. Raises NotFoundError if not found."""
+        return self._core.services.space.get_space_by_slug(slug)
+
     def _resolve_user(self, username: str) -> User:
         """Resolve username to User object. Raises NotFoundError if not found."""
         return self._core.services.user.get_user_by_username(username)
