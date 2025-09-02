@@ -26,7 +26,13 @@ Dynamic schema system where each space defines its own fields:
 ### Users & Permissions
 - Small team focus (1-10 users)
 - Space-level access control
-- Role-based permissions (owner, editor, viewer)
+- Members have full access to their spaces
+
+### Comments
+- Threaded discussions on notes
+- Support for replies to create conversation threads
+- User attribution for all comments
+- Timestamp tracking for activity history
 
 ### AI Integration
 Built with AI agents in mind:

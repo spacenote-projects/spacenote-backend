@@ -1,5 +1,10 @@
 # Architecture
 
+## Repository Structure
+SpaceNote is organized as a multi-repository project:
+- **spacenote-backend** - Python + MongoDB + FastAPI (this repository)
+- **spacenote-frontend** - React application
+
 ## Tech Stack
 - **Python 3.13**
 - **MongoDB** - Document database
@@ -121,3 +126,9 @@ This aggressive caching is possible because SpaceNote is designed for self-hoste
 ### Pure Functions vs Services
 - Use pure functions when no state/database needed
 - Use services for database, cache, or cross-service operations
+
+## OpenAPI Integration
+- FastAPI automatically generates OpenAPI specification
+- Frontend types are auto-generated from the OpenAPI schema
+- Ensures type safety across backend and frontend
+- Single source of truth for API contracts
