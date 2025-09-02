@@ -5,6 +5,45 @@
 - **MongoDB** - Document database
 - **FastAPI** - Web framework
 
+## Project Structure
+
+```
+spacenote-backend/
+├── docs/                       # Documentation
+│   ├── architecture.md         # This file
+│   └── concepts.md            # Core domain concepts
+├── src/spacenote/             # Main application code
+│   ├── core/                  # Core business logic
+│   │   ├── modules/           # Feature modules
+│   │   │   ├── user/         # User management
+│   │   │   ├── space/        # Space management
+│   │   │   ├── note/         # Note operations
+│   │   │   ├── field/        # Field definitions & validation
+│   │   │   ├── comment/      # Comment system
+│   │   │   ├── session/      # Session management
+│   │   │   ├── access/       # Access control
+│   │   │   ├── counter/      # ID generation
+│   │   │   └── filter/       # Query filters
+│   │   ├── core.py           # Core container & DI
+│   │   └── db.py             # Database utilities
+│   ├── web/                  # Web layer
+│   │   ├── routers/          # FastAPI route handlers
+│   │   │   ├── auth.py       # Authentication endpoints
+│   │   │   ├── users.py      # User endpoints
+│   │   │   ├── spaces.py     # Space endpoints
+│   │   │   ├── notes.py      # Note endpoints
+│   │   │   └── comments.py   # Comment endpoints
+│   │   ├── deps.py           # FastAPI dependencies
+│   │   ├── server.py         # FastAPI app setup
+│   │   └── error_handlers.py # Global error handling
+│   ├── app.py                # Application facade
+│   ├── config.py             # Configuration
+│   ├── main.py               # Entry point
+│   └── errors.py             # Custom exceptions
+├── justfile                  # Task automation
+└── pyproject.toml           # Project dependencies
+```
+
 ## Layers
 
 ```
@@ -68,6 +107,16 @@ App validates permissions before every operation:
 - `ensure_authenticated()` - User is logged in
 - `ensure_admin()` - User is admin
 - `ensure_space_member()` - User belongs to space
+
+### Caching Strategy
+The project uses in-memory caches for:
+- **Users** - All user data cached
+- **Spaces** - All space data cached
+
+This aggressive caching is possible because SpaceNote is designed for self-hosted deployments with:
+- Small teams (1-10 users maximum)
+- Limited spaces (up to 100 spaces)
+- Low memory footprint even with full caching
 
 ### Pure Functions vs Services
 - Use pure functions when no state/database needed
