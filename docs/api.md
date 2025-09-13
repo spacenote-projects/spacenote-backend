@@ -13,7 +13,7 @@ http://localhost:8000/api/v1
 The API uses token-based authentication. After logging in, include the authentication token in the `Authorization` header:
 
 ```
-Authorization: Bearer <auth_token>
+Authorization: Bearer <token>
 ```
 
 Alternatively, the token can be passed as a cookie (automatically set on login for browser-based clients).
@@ -55,7 +55,7 @@ Authenticate with username and password to receive an authentication token.
 **Response (200):**
 ```json
 {
-  "auth_token": "string"
+  "token": "string"
 }
 ```
 

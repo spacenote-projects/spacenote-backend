@@ -9,7 +9,7 @@ from spacenote.errors import AuthenticationError
 
 # Security schemes
 bearer_scheme = HTTPBearer(auto_error=False)
-cookie_scheme = APIKeyCookie(name="auth_token", auto_error=False)
+cookie_scheme = APIKeyCookie(name="token", auto_error=False)
 
 
 async def get_app(request: Request) -> App:

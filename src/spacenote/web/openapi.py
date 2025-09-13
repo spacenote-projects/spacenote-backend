@@ -27,7 +27,7 @@ def set_custom_openapi(app: FastAPI) -> None:
             "AuthTokenCookie": {
                 "type": "apiKey",
                 "in": "cookie",
-                "name": "auth_token",
+                "name": "token",
                 "description": "Authentication token stored in cookie",
             },
         }

@@ -17,7 +17,7 @@ class LoginRequest(BaseModel):
 class LoginResponse(BaseModel):
     """Authentication response."""
 
-    auth_token: str = Field(..., description="Authentication token for subsequent requests")
+    token: str = Field(..., description="Authentication token for subsequent requests")
 
 
 @router.post(
@@ -33,18 +33,18 @@ class LoginResponse(BaseModel):
 async def login(login_data: LoginRequest, app: AppDep, response: Response) -> LoginResponse:
     """Authenticate user and create session."""
 
-    auth_token = await app.login(login_data.username, login_data.password)
+    token = await app.login(login_data.username, login_data.password)
 
     # Set cookie for browser-based clients
     response.set_cookie(
-        key="auth_token",
-        value=auth_token,
+        key="token",
+        value=token,
         httponly=True,
         samesite="lax",
         secure=False,  # Set to True in production with HTTPS
     )
 
-    return LoginResponse(auth_token=auth_token)
+    return LoginResponse(token=token)
 
 
 @router.post(
@@ -60,4 +60,4 @@ async def login(login_data: LoginRequest, app: AppDep, response: Response) -> Lo
 )
 async def logout(app: AppDep, auth_token: AuthTokenDep, response: Response) -> None:
     await app.logout(auth_token)
-    response.delete_cookie("auth_token")
+    response.delete_cookie("token")
