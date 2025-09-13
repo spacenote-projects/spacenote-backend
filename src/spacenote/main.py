@@ -1,19 +1,16 @@
 """Application entry point for SpaceNote backend server."""
 
-import uvicorn
-
 from spacenote.app import App
 from spacenote.config import Config
 from spacenote.logging import setup_logging
-from spacenote.web.server import create_fastapi_app
+from spacenote.web.runner import run_server
 
 
 def main() -> None:
     config = Config()
     setup_logging(config.debug)
     app = App(config)
-    fastapi_app = create_fastapi_app(app, config)
-    uvicorn.run(fastapi_app, host=config.host, port=config.port)
+    run_server(app, config)
 
 
 if __name__ == "__main__":

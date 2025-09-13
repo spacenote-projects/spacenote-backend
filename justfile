@@ -34,7 +34,7 @@ dev: # For human devs
     uv run python -m watchfiles "python -m spacenote.main" src
 
 agent-start: agent-stop # For AI agents
-    sh -c 'SPACENOTE_BACKEND_PORT=3101 uv run python -m spacenote.main > agent.log 2>&1 & echo $! > agent.pid'
+    sh -c 'SPACENOTE_PORT=3101 uv run python -m spacenote.main > agent.log 2>&1 & echo $! > agent.pid'
 
 agent-stop: # For AI agents
     -pkill -F agent.pid 2>/dev/null || true

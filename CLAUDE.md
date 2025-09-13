@@ -16,7 +16,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-- `just agent-start` - Start the application
+- `just agent-start` - Start the application on port 3101
 - `just agent-stop` - Stop the application
 - `just dev` - Never run this command. It's for humans only.
+
+## Critical Rules
+
+- **NEVER kill or interact with port 3100** - This port is reserved for human developers only!
+- **Always use port 3101 for agent testing** - The `just agent-start` command automatically uses port 3101
 
