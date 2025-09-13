@@ -7,6 +7,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
 from spacenote.core.modules.user.models import User
+from spacenote.core.modules.user.validators import validate_password
 from spacenote.errors import NotFoundError, ValidationError
 
 logger = structlog.get_logger(__name__)
@@ -50,6 +51,7 @@ class UserService(Service):
         if self.has_username(username):
             raise ValidationError(f"User '{username}' already exists")
 
+        validate_password(password)
         password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         res = await self._collection.insert_one(User(username=username, password_hash=password_hash).to_mongo())
         return await self.update_user_cache(res.inserted_id)
@@ -60,6 +62,17 @@ class UserService(Service):
         if user is None:
             return False
         return bcrypt.checkpw(password.encode("utf-8"), user.password_hash.encode("utf-8"))
+
+    async def change_password(self, user_id: UUID, old_password: str, new_password: str) -> None:
+        """Change user password after verifying current password."""
+        user = self.get_user(user_id)
+        if not bcrypt.checkpw(old_password.encode("utf-8"), user.password_hash.encode("utf-8")):
+            raise ValidationError("Invalid current password")
+
+        validate_password(new_password)
+        password_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        await self._collection.update_one({"_id": user_id}, {"$set": {"password_hash": password_hash}})
+        await self.update_user_cache(user_id)
 
     async def ensure_admin_user_exists(self) -> None:
         """Create default admin user if not exists."""

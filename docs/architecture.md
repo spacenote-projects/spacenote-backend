@@ -74,6 +74,8 @@ Handle HTTP requests, call App methods only.
 - Facade for all operations
 - Validates user permissions before operations
 - Never exposes Core or Services directly
+- Contains NO business logic - only access control and delegation
+- Converts between domain models and view models when needed
 
 ### 3. Core Class (`core.py`)
 Container providing:
@@ -132,3 +134,18 @@ This aggressive caching is possible because SpaceNote is designed for self-hoste
 - Frontend types are auto-generated from the OpenAPI schema
 - Ensures type safety across backend and frontend
 - Single source of truth for API contracts
+
+## HTTP Response Codes
+- **200 OK** - Successful GET requests or operations that return data
+- **201 Created** - Resource creation (POST) that returns the created resource
+- **204 No Content** - Successful operations that don't return data (logout, password change, etc.)
+- **400 Bad Request** - Invalid request data or validation errors
+- **401 Unauthorized** - Authentication required or invalid credentials
+- **403 Forbidden** - Authenticated but lacking permissions
+- **404 Not Found** - Resource doesn't exist
+
+### When to Use 204 No Content
+Use 204 for operations that:
+- Successfully complete but don't need to return data
+- Perform actions like logout, password changes, deletions
+- Update resources without returning the updated resource

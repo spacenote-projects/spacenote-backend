@@ -100,6 +100,16 @@ class App:
         current_user = await self._core.services.session.get_authenticated_user(auth_token)
         return await self._core.services.comment.create_comment(note.id, space.id, current_user.id, content)
 
+    async def get_current_user(self, auth_token: AuthToken) -> UserView:
+        """Get current authenticated user profile."""
+        current_user = await self._core.services.access.ensure_authenticated(auth_token)
+        return UserView.from_domain(current_user)
+
+    async def change_password(self, auth_token: AuthToken, old_password: str, new_password: str) -> None:
+        """Change password for current user."""
+        current_user = await self._core.services.access.ensure_authenticated(auth_token)
+        await self._core.services.user.change_password(current_user.id, old_password, new_password)
+
     # === Private resolver methods ===
     def _resolve_space(self, slug: str) -> Space:
         """Resolve space slug to Space object. Raises NotFoundError if not found."""

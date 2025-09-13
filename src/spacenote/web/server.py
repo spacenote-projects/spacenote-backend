@@ -10,7 +10,7 @@ from spacenote.config import Config
 from spacenote.errors import UserError
 from spacenote.web.error_handlers import general_exception_handler, user_error_handler
 from spacenote.web.openapi import set_custom_openapi
-from spacenote.web.routers import auth_router, comments_router, notes_router, spaces_router, users_router
+from spacenote.web.routers import auth_router, comments_router, notes_router, profile_router, spaces_router, users_router
 
 
 def create_fastapi_app(app_instance: App, config: Config) -> FastAPI:
@@ -49,6 +49,7 @@ def create_fastapi_app(app_instance: App, config: Config) -> FastAPI:
 
     # API v1 routes
     app.include_router(auth_router, prefix="/api/v1")
+    app.include_router(profile_router, prefix="/api/v1")
     app.include_router(spaces_router, prefix="/api/v1")
     app.include_router(notes_router, prefix="/api/v1")
     app.include_router(comments_router, prefix="/api/v1")

@@ -52,12 +52,12 @@ async def login(login_data: LoginRequest, app: AppDep, response: Response) -> Lo
     summary="End session",
     description="Invalidate the current authentication session.",
     operation_id="logout",
+    status_code=204,
     responses={
-        200: {"description": "Successfully logged out"},
+        204: {"description": "Successfully logged out"},
         401: {"model": ErrorResponse, "description": "Not authenticated"},
     },
 )
-async def logout(app: AppDep, auth_token: AuthTokenDep, response: Response) -> dict[str, str]:
+async def logout(app: AppDep, auth_token: AuthTokenDep, response: Response) -> None:
     await app.logout(auth_token)
     response.delete_cookie("auth_token")
-    return {"message": "Logged out successfully"}
