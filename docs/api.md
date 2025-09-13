@@ -16,7 +16,7 @@ The API uses token-based authentication. After logging in, include the authentic
 Authorization: Bearer <auth_token>
 ```
 
-Alternatively, the token can be passed as a cookie (automatically set on login).
+Alternatively, the token can be passed as a cookie (automatically set on login for browser-based clients).
 
 ### Response Format
 All successful responses return JSON data. Error responses follow this format:

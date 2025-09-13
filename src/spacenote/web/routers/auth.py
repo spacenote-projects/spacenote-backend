@@ -35,7 +35,7 @@ async def login(login_data: LoginRequest, app: AppDep, response: Response) -> Lo
 
     auth_token = await app.login(login_data.username, login_data.password)
 
-    # Set cookie for browser-based testing
+    # Set cookie for browser-based clients
     response.set_cookie(
         key="auth_token",
         value=auth_token,

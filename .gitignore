@@ -28,10 +28,8 @@ htmlcov/
 *.log
 
 # Agent process management
-backend.agent.pid
-backend.agent.log
-frontend.agent.pid
-frontend.agent.log
+agent.pid
+agent.log
 
 
 # Session/Cookie files

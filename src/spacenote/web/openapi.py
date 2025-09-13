@@ -19,11 +19,10 @@ def set_custom_openapi(app: FastAPI) -> None:
 
         # Add security schemes
         openapi_schema["components"]["securitySchemes"] = {
-            "AuthTokenHeader": {
-                "type": "apiKey",
-                "in": "header",
-                "name": "X-Auth-Token",
-                "description": "Authentication token passed in header",
+            "BearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "description": "Bearer token authentication (preferred)",
             },
             "AuthTokenCookie": {
                 "type": "apiKey",
@@ -35,7 +34,7 @@ def set_custom_openapi(app: FastAPI) -> None:
 
         # Apply security globally (will be overridden for public endpoints)
         openapi_schema["security"] = [
-            {"AuthTokenHeader": []},
+            {"BearerAuth": []},
             {"AuthTokenCookie": []},
         ]
 
