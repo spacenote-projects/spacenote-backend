@@ -83,3 +83,29 @@ class SpaceService(Service):
         await self._collection.update_one({"_id": space_id}, {"$push": {"fields": validated_field.model_dump()}})
 
         return await self.update_space_cache(space_id)
+
+    async def add_member(self, space_id: UUID, user_id: UUID) -> Space:
+        """Add a member to a space."""
+        space = self.get_space(space_id)
+
+        if not self.core.services.user.has_user(user_id):
+            raise NotFoundError(f"User '{user_id}' not found")
+
+        if user_id in space.members:
+            raise ValidationError("User is already a member of this space")
+
+        await self._collection.update_one({"_id": space_id}, {"$push": {"members": user_id}})
+        return await self.update_space_cache(space_id)
+
+    async def remove_member(self, space_id: UUID, user_id: UUID) -> None:
+        """Remove a member from a space."""
+        space = self.get_space(space_id)
+
+        if user_id not in space.members:
+            raise ValidationError("User is not a member of this space")
+
+        if len(space.members) == 1:
+            raise ValidationError("Cannot remove the last member from a space")
+
+        await self._collection.update_one({"_id": space_id}, {"$pull": {"members": user_id}})
+        await self.update_space_cache(space_id)

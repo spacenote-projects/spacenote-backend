@@ -110,6 +110,20 @@ class App:
         current_user = await self._core.services.access.ensure_authenticated(auth_token)
         await self._core.services.user.change_password(current_user.id, old_password, new_password)
 
+    async def add_space_member(self, auth_token: AuthToken, space_slug: str, username: str) -> Space:
+        """Add a member to a space (members only)."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        user = self._resolve_user(username)
+        return await self._core.services.space.add_member(space.id, user.id)
+
+    async def remove_space_member(self, auth_token: AuthToken, space_slug: str, username: str) -> None:
+        """Remove a member from a space (members only)."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        user = self._resolve_user(username)
+        await self._core.services.space.remove_member(space.id, user.id)
+
     # === Private resolver methods ===
     def _resolve_space(self, slug: str) -> Space:
         """Resolve space slug to Space object. Raises NotFoundError if not found."""

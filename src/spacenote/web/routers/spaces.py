@@ -67,3 +67,46 @@ async def create_space(req: CreateSpaceRequest, app: AppDep, auth_token: AuthTok
 )
 async def add_field_to_space(space_slug: str, field: SpaceField, app: AppDep, auth_token: AuthTokenDep) -> Space:
     return await app.add_field_to_space(auth_token, space_slug, field)
+
+
+class AddMemberRequest(BaseModel):
+    """Request to add a member to a space."""
+
+    username: str = Field(..., description="Username of the user to add as a member")
+
+
+@router.post(
+    "/spaces/{space_slug}/members",
+    summary="Add member to space",
+    description="Add a new member to a space. Only existing space members can add new members.",
+    operation_id="addMemberToSpace",
+    responses={
+        200: {"description": "Member added successfully"},
+        400: {"model": ErrorResponse, "description": "User is already a member"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Not a member of this space"},
+        404: {"model": ErrorResponse, "description": "Space or user not found"},
+    },
+)
+async def add_member_to_space(space_slug: str, req: AddMemberRequest, app: AppDep, auth_token: AuthTokenDep) -> Space:
+    return await app.add_space_member(auth_token, space_slug, req.username)
+
+
+@router.delete(
+    "/spaces/{space_slug}/members/{username}",
+    summary="Remove member from space",
+    description=(
+        "Remove a member from a space. Only existing space members can remove other members. Cannot remove the last member."
+    ),
+    operation_id="removeMemberFromSpace",
+    status_code=204,
+    responses={
+        204: {"description": "Member removed successfully"},
+        400: {"model": ErrorResponse, "description": "Cannot remove last member or user is not a member"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Not a member of this space"},
+        404: {"model": ErrorResponse, "description": "Space or user not found"},
+    },
+)
+async def remove_member_from_space(space_slug: str, username: str, app: AppDep, auth_token: AuthTokenDep) -> None:
+    await app.remove_space_member(auth_token, space_slug, username)
