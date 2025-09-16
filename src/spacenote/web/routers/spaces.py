@@ -110,3 +110,20 @@ async def add_member_to_space(space_slug: str, req: AddMemberRequest, app: AppDe
 )
 async def remove_member_from_space(space_slug: str, username: str, app: AppDep, auth_token: AuthTokenDep) -> None:
     await app.remove_space_member(auth_token, space_slug, username)
+
+
+@router.delete(
+    "/spaces/{space_slug}",
+    summary="Delete space",
+    description="Delete a space and all its data including notes and comments. Only admins can delete spaces.",
+    operation_id="deleteSpace",
+    status_code=204,
+    responses={
+        204: {"description": "Space deleted successfully"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Admin privileges required"},
+        404: {"model": ErrorResponse, "description": "Space not found"},
+    },
+)
+async def delete_space(space_slug: str, app: AppDep, auth_token: AuthTokenDep) -> None:
+    await app.delete_space(auth_token, space_slug)

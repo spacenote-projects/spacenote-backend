@@ -59,3 +59,8 @@ class NoteService(Service):
             ).to_mongo()
         )
         return await self.get_note(res.inserted_id)
+
+    async def delete_notes_by_space(self, space_id: UUID) -> int:
+        """Delete all notes in a space and return count of deleted notes."""
+        result = await self._collection.delete_many({"space_id": space_id})
+        return result.deleted_count

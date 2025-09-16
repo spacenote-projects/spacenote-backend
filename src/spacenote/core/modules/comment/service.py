@@ -39,3 +39,8 @@ class CommentService(Service):
         """Get all comments for note, sorted by number."""
         cursor = self._collection.find({"note_id": note_id}).sort("number", 1)
         return await Comment.list_cursor(cursor)
+
+    async def delete_comments_by_space(self, space_id: UUID) -> int:
+        """Delete all comments in a space and return count of deleted comments."""
+        result = await self._collection.delete_many({"space_id": space_id})
+        return result.deleted_count

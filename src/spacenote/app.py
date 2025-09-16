@@ -124,6 +124,17 @@ class App:
         user = self._resolve_user(username)
         await self._core.services.space.remove_member(space.id, user.id)
 
+    async def delete_space(self, auth_token: AuthToken, space_slug: str) -> None:
+        """Delete a space and all its data (admin only)."""
+        await self._core.services.access.ensure_admin(auth_token)
+        space = self._resolve_space(space_slug)
+
+        # Delete in order: comments first (most dependent), then notes, counters, and finally the space
+        await self._core.services.comment.delete_comments_by_space(space.id)
+        await self._core.services.note.delete_notes_by_space(space.id)
+        await self._core.services.counter.delete_counters_by_space(space.id)
+        await self._core.services.space.delete_space(space.id)
+
     # === Private resolver methods ===
     def _resolve_space(self, slug: str) -> Space:
         """Resolve space slug to Space object. Raises NotFoundError if not found."""

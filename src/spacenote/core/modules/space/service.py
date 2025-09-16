@@ -109,3 +109,12 @@ class SpaceService(Service):
 
         await self._collection.update_one({"_id": space_id}, {"$pull": {"members": user_id}})
         await self.update_space_cache(space_id)
+
+    async def delete_space(self, space_id: UUID) -> None:
+        """Delete a space and remove from cache."""
+        result = await self._collection.delete_one({"_id": space_id})
+        if result.deleted_count == 0:
+            raise NotFoundError(f"Space '{space_id}' not found")
+
+        if space_id in self._spaces:
+            del self._spaces[space_id]

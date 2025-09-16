@@ -39,3 +39,8 @@ class CounterService(Service):
         if doc:
             return int(doc["seq"])
         return 0
+
+    async def delete_counters_by_space(self, space_id: UUID) -> int:
+        """Delete all counters for a space and return count of deleted counters."""
+        result = await self._collection.delete_many({"space_id": space_id})
+        return result.deleted_count
