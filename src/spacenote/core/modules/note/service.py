@@ -7,6 +7,7 @@ from spacenote.core.core import Service
 from spacenote.core.modules.counter.models import CounterType
 from spacenote.core.modules.field.validators import parse_raw_fields
 from spacenote.core.modules.note.models import Note
+from spacenote.core.pagination import PaginationResult
 from spacenote.errors import NotFoundError
 
 
@@ -23,10 +24,24 @@ class NoteService(Service):
         await self._collection.create_index([("space_id", 1)])
         await self._collection.create_index([("created_at", -1)])
 
-    async def list_notes(self, space_id: UUID) -> list[Note]:
-        """Get all notes in space, sorted by number."""
-        docs = await self._collection.find({"space_id": space_id}).sort("number", 1).to_list()
-        return [Note.model_validate(doc) for doc in docs]
+    async def list_notes(self, space_id: UUID, limit: int = 50, offset: int = 0) -> PaginationResult[Note]:
+        """Get paginated notes in space, sorted by number descending."""
+        query = {"space_id": space_id}
+
+        # Get total count
+        total = await self._collection.count_documents(query)
+
+        # Get paginated items
+        cursor = self._collection.find(query).sort("number", -1).skip(offset).limit(limit)
+        docs = await cursor.to_list()
+        items = [Note.model_validate(doc) for doc in docs]
+
+        return PaginationResult(
+            items=items,
+            total=total,
+            limit=limit,
+            offset=offset,
+        )
 
     async def get_note(self, note_id: UUID) -> Note:
         """Get note by ID."""

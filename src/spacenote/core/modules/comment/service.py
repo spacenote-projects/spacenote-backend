@@ -5,6 +5,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
 from spacenote.core.modules.comment.models import Comment
+from spacenote.core.pagination import PaginationResult
 
 
 class CommentService(Service):
@@ -35,10 +36,23 @@ class CommentService(Service):
         await self._collection.insert_one(comment.to_mongo())
         return comment
 
-    async def get_note_comments(self, note_id: UUID) -> list[Comment]:
-        """Get all comments for note, sorted by number."""
-        cursor = self._collection.find({"note_id": note_id}).sort("number", -1)
-        return await Comment.list_cursor(cursor)
+    async def get_note_comments(self, note_id: UUID, limit: int = 50, offset: int = 0) -> PaginationResult[Comment]:
+        """Get paginated comments for note, sorted by number descending."""
+        query = {"note_id": note_id}
+
+        # Get total count
+        total = await self._collection.count_documents(query)
+
+        # Get paginated items
+        cursor = self._collection.find(query).sort("number", -1).skip(offset).limit(limit)
+        items = await Comment.list_cursor(cursor)
+
+        return PaginationResult(
+            items=items,
+            total=total,
+            limit=limit,
+            offset=offset,
+        )
 
     async def delete_comments_by_space(self, space_id: UUID) -> int:
         """Delete all comments in a space and return count of deleted comments."""

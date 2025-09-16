@@ -1,7 +1,10 @@
-from fastapi import APIRouter
+from typing import Annotated
+
+from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 
 from spacenote.core.modules.note.models import Note
+from spacenote.core.pagination import PaginationResult
 from spacenote.web.deps import AppDep, AuthTokenDep
 from spacenote.web.openapi import ErrorResponse
 
@@ -35,17 +38,23 @@ class CreateNoteRequest(BaseModel):
 @router.get(
     "/spaces/{space_slug}/notes",
     summary="List space notes",
-    description="Get all notes in a space. Only space members can view notes.",
+    description="Get paginated notes in a space. Only space members can view notes.",
     operation_id="listNotes",
     responses={
-        200: {"description": "List of notes"},
+        200: {"description": "Paginated list of notes"},
         401: {"model": ErrorResponse, "description": "Not authenticated"},
         403: {"model": ErrorResponse, "description": "Not a member of this space"},
         404: {"model": ErrorResponse, "description": "Space not found"},
     },
 )
-async def list_notes(space_slug: str, app: AppDep, auth_token: AuthTokenDep) -> list[Note]:
-    return await app.get_notes_by_space(auth_token, space_slug)
+async def list_notes(
+    space_slug: str,
+    app: AppDep,
+    auth_token: AuthTokenDep,
+    limit: Annotated[int, Query(ge=1, description="Maximum items to return")] = 50,
+    offset: Annotated[int, Query(ge=0, description="Number of items to skip")] = 0,
+) -> PaginationResult[Note]:
+    return await app.get_notes_by_space(auth_token, space_slug, limit, offset)
 
 
 @router.get(

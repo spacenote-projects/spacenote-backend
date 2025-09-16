@@ -9,6 +9,7 @@ from spacenote.core.modules.note.models import Note
 from spacenote.core.modules.session.models import AuthToken
 from spacenote.core.modules.space.models import Space
 from spacenote.core.modules.user.models import User, UserView
+from spacenote.core.pagination import PaginationResult
 from spacenote.errors import AuthenticationError
 
 
@@ -68,11 +69,13 @@ class App:
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         return await self._core.services.space.add_field(space.id, field)
 
-    async def get_notes_by_space(self, auth_token: AuthToken, space_slug: str) -> list[Note]:
-        """Get all notes in space (members only)."""
+    async def get_notes_by_space(
+        self, auth_token: AuthToken, space_slug: str, limit: int = 50, offset: int = 0
+    ) -> PaginationResult[Note]:
+        """Get paginated notes in space (members only)."""
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
-        return await self._core.services.note.list_notes(space.id)
+        return await self._core.services.note.list_notes(space.id, limit, offset)
 
     async def get_note_by_number(self, auth_token: AuthToken, space_slug: str, number: int) -> Note:
         """Get specific note by number (members only)."""
@@ -87,11 +90,13 @@ class App:
         current_user = await self._core.services.access.ensure_authenticated(auth_token)
         return await self._core.services.note.create_note(space.id, current_user.id, raw_fields)
 
-    async def get_note_comments(self, auth_token: AuthToken, space_slug: str, note_number: int) -> list[Comment]:
-        """Get comments for note (members only)."""
+    async def get_note_comments(
+        self, auth_token: AuthToken, space_slug: str, note_number: int, limit: int = 50, offset: int = 0
+    ) -> PaginationResult[Comment]:
+        """Get paginated comments for note (members only)."""
         space, note = await self._resolve_note(space_slug, note_number)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
-        return await self._core.services.comment.get_note_comments(note.id)
+        return await self._core.services.comment.get_note_comments(note.id, limit, offset)
 
     async def create_comment(self, auth_token: AuthToken, space_slug: str, note_number: int, content: str) -> Comment:
         """Add comment to note (members only)."""

@@ -1,9 +1,12 @@
 """Comment-related API endpoints."""
 
-from fastapi import APIRouter
+from typing import Annotated
+
+from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 
 from spacenote.core.modules.comment.models import Comment
+from spacenote.core.pagination import PaginationResult
 from spacenote.web.deps import AppDep, AuthTokenDep
 from spacenote.web.openapi import ErrorResponse
 
@@ -19,17 +22,24 @@ class CreateCommentRequest(BaseModel):
 @router.get(
     "/spaces/{space_slug}/notes/{number}/comments",
     summary="List note comments",
-    description="Get all comments for a specific note. Only space members can view comments.",
+    description="Get paginated comments for a specific note. Only space members can view comments.",
     operation_id="listComments",
     responses={
-        200: {"description": "List of comments"},
+        200: {"description": "Paginated list of comments"},
         401: {"model": ErrorResponse, "description": "Not authenticated"},
         403: {"model": ErrorResponse, "description": "Not a member of this space"},
         404: {"model": ErrorResponse, "description": "Space or note not found"},
     },
 )
-async def list_comments(space_slug: str, number: int, app: AppDep, auth_token: AuthTokenDep) -> list[Comment]:
-    return await app.get_note_comments(auth_token, space_slug, number)
+async def list_comments(
+    space_slug: str,
+    number: int,
+    app: AppDep,
+    auth_token: AuthTokenDep,
+    limit: Annotated[int, Query(ge=1, description="Maximum items to return")] = 50,
+    offset: Annotated[int, Query(ge=0, description="Number of items to skip")] = 0,
+) -> PaginationResult[Comment]:
+    return await app.get_note_comments(auth_token, space_slug, number, limit, offset)
 
 
 @router.post(
