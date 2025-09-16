@@ -32,13 +32,13 @@ class SpaceService(Service):
         spaces = await Space.list_cursor(self._collection.find())
         self._spaces = {space.id: space for space in spaces}
 
-    async def update_space_cache(self, id: UUID) -> Space:
+    async def update_space_cache(self, space_id: UUID) -> Space:
         """Reload a specific space cache from database."""
-        space = await self._collection.find_one({"_id": id})
+        space = await self._collection.find_one({"_id": space_id})
         if space is None:
-            raise NotFoundError(f"Space '{id}' not found")
-        self._spaces[id] = Space.model_validate(space)
-        return self._spaces[id]
+            raise NotFoundError(f"Space '{space_id}' not found")
+        self._spaces[space_id] = Space.model_validate(space)
+        return self._spaces[space_id]
 
     def get_space(self, space_id: UUID) -> Space:
         """Get a space by ID."""

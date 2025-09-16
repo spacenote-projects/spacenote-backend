@@ -21,11 +21,11 @@ class UserService(Service):
         self._collection = database.get_collection("users")
         self._users: dict[UUID, User] = {}
 
-    def get_user(self, id: UUID) -> User:
+    def get_user(self, user_id: UUID) -> User:
         """Get user by ID from cache."""
-        if id not in self._users:
-            raise NotFoundError(f"User '{id}' not found")
-        return self._users[id]
+        if user_id not in self._users:
+            raise NotFoundError(f"User '{user_id}' not found")
+        return self._users[user_id]
 
     def get_user_by_username(self, username: str) -> User:
         """Get user by username from cache."""
@@ -34,9 +34,9 @@ class UserService(Service):
             raise NotFoundError(f"User '{username}' not found")
         return user
 
-    def has_user(self, id: UUID) -> bool:
+    def has_user(self, user_id: UUID) -> bool:
         """Check if user exists by ID."""
-        return id in self._users
+        return user_id in self._users
 
     def has_username(self, username: str) -> bool:
         """Check if username exists."""
@@ -84,13 +84,13 @@ class UserService(Service):
         users = await User.list_cursor(self._collection.find())
         self._users = {user.id: user for user in users}
 
-    async def update_user_cache(self, id: UUID) -> User:
+    async def update_user_cache(self, user_id: UUID) -> User:
         """Reload a specific user cache from database."""
-        user = await self._collection.find_one({"_id": id})
+        user = await self._collection.find_one({"_id": user_id})
         if user is None:
-            raise NotFoundError(f"User '{id}' not found")
-        self._users[id] = User.model_validate(user)
-        return self._users[id]
+            raise NotFoundError(f"User '{user_id}' not found")
+        self._users[user_id] = User.model_validate(user)
+        return self._users[user_id]
 
     async def on_start(self) -> None:
         """Initialize indexes, cache, and admin user."""
