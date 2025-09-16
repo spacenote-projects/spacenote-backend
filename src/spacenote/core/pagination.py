@@ -1,6 +1,6 @@
 from typing import TypeVar
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field
 
 T = TypeVar("T")
 
@@ -14,7 +14,6 @@ class PaginationResult[T](BaseModel):
     offset: int = Field(..., description="Number of items skipped", ge=0)
 
     @property
-    @computed_field
     def has_more(self) -> bool:
         """Whether there are more items beyond the current page."""
         return self.offset + len(self.items) < self.total
