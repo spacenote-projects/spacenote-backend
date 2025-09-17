@@ -21,6 +21,7 @@ class Space(MongoModel):
 
     slug: str  # URL-friendly unique ID
     title: str
+    description: str = ""  # Space description (empty string for old spaces)
     members: list[UUID]  # Users with access
     fields: list[SpaceField] = Field(default_factory=list)  # Field definitions (order matters)
     list_fields: list[str] = Field(default_factory=list)  # Default columns in list view

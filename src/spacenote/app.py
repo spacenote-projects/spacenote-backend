@@ -58,10 +58,10 @@ class App:
         current_user = await self._core.services.access.ensure_authenticated(auth_token)
         return self._core.services.space.get_spaces_by_member(current_user.id)
 
-    async def create_space(self, auth_token: AuthToken, slug: str, title: str) -> Space:
+    async def create_space(self, auth_token: AuthToken, slug: str, title: str, description: str) -> Space:
         """Create new space with current user as owner."""
         current_user = await self._core.services.access.ensure_authenticated(auth_token)
-        return await self._core.services.space.create_space(slug, title, current_user.id)
+        return await self._core.services.space.create_space(slug, title, description, current_user.id)
 
     async def add_field_to_space(self, auth_token: AuthToken, space_slug: str, field: SpaceField) -> Space:
         """Add custom field to space (members only)."""

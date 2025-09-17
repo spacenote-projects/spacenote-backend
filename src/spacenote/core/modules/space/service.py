@@ -61,7 +61,7 @@ class SpaceService(Service):
         """Check if a space exists by slug."""
         return any(space.slug == slug for space in self._spaces.values())
 
-    async def create_space(self, slug: str, title: str, member: UUID) -> Space:
+    async def create_space(self, slug: str, title: str, description: str, member: UUID) -> Space:
         """Create a new space with validation."""
         if not self.core.services.user.has_user(member):
             raise ValidationError(f"User '{member}' does not exist")
@@ -70,7 +70,9 @@ class SpaceService(Service):
         if self.has_slug(slug):
             raise ValidationError(f"Space with slug '{slug}' already exists")
 
-        res = await self._collection.insert_one(Space(slug=slug, title=title, members=[member]).to_mongo())
+        res = await self._collection.insert_one(
+            Space(slug=slug, title=title, description=description, members=[member]).to_mongo()
+        )
         return await self.update_space_cache(res.inserted_id)
 
     async def add_field(self, space_id: UUID, field: SpaceField) -> Space:

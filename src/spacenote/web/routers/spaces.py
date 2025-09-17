@@ -20,8 +20,13 @@ class CreateSpaceRequest(BaseModel):
         pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$",
     )
     title: str = Field(..., description="Human-readable space name")
+    description: str = Field(..., description="Space description")
 
-    model_config = {"json_schema_extra": {"examples": [{"slug": "my-tasks", "title": "My Task Tracker"}]}}
+    model_config = {
+        "json_schema_extra": {
+            "examples": [{"slug": "my-tasks", "title": "My Task Tracker", "description": "Track personal tasks and projects"}]
+        }
+    }
 
 
 @router.get(
@@ -51,7 +56,7 @@ async def list_spaces(app: AppDep, auth_token: AuthTokenDep) -> list[Space]:
     },
 )
 async def create_space(req: CreateSpaceRequest, app: AppDep, auth_token: AuthTokenDep) -> Space:
-    return await app.create_space(auth_token, req.slug, req.title)
+    return await app.create_space(auth_token, req.slug, req.title, req.description)
 
 
 @router.post(
