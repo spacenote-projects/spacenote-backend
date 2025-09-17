@@ -1,6 +1,7 @@
-from datetime import datetime
+"""Field validation using validator pattern."""
 
-from spacenote.core.modules.field.models import FieldOption, FieldType, FieldValueType, SpaceField
+from spacenote.core.modules.field.models import FieldValueType, SpaceField
+from spacenote.core.modules.field.validator_types import get_validator
 from spacenote.errors import ValidationError
 
 
@@ -17,92 +18,17 @@ def parse_field_value(field: SpaceField, raw_value: str) -> FieldValueType:
     Raises:
         ValidationError: If the value cannot be parsed or validated
     """
-    # Handle empty strings for optional fields
-    if raw_value == "" and not field.required:
-        return None
-
-    match field.type:
-        case FieldType.STRING | FieldType.MARKDOWN | FieldType.USER:
-            return raw_value
-
-        case FieldType.BOOLEAN:
-            if raw_value.lower() in ("true", "1", "yes", "on"):
-                return True
-            if raw_value.lower() in ("false", "0", "no", "off", ""):
-                return False
-            raise ValidationError(f"Invalid boolean value for field '{field.name}': {raw_value}")
-
-        case FieldType.INT:
-            try:
-                int_value = int(raw_value)
-            except ValueError as e:
-                raise ValidationError(f"Invalid integer value for field '{field.name}': {raw_value}") from e
-            _validate_numeric_range(field, int_value)
-            return int_value
-
-        case FieldType.FLOAT:
-            try:
-                float_value = float(raw_value)
-            except ValueError as e:
-                raise ValidationError(f"Invalid float value for field '{field.name}': {raw_value}") from e
-            _validate_numeric_range(field, float_value)
-            return float_value
-
-        case FieldType.STRING_CHOICE:
-            if FieldOption.VALUES in field.options:
-                allowed_values = field.options[FieldOption.VALUES]
-                if not isinstance(allowed_values, list):
-                    raise ValidationError("Invalid field configuration: VALUES must be a list")
-                if raw_value not in allowed_values:
-                    raise ValidationError(
-                        f"Invalid choice for field '{field.name}': '{raw_value}'. Allowed values: {', '.join(allowed_values)}"
-                    )
-            return raw_value
-
-        case FieldType.TAGS:
-            tags = [tag.strip() for tag in raw_value.split(",") if tag.strip()]
-            if FieldOption.VALUES in field.options:
-                allowed_values = field.options[FieldOption.VALUES]
-                if not isinstance(allowed_values, list):
-                    raise ValidationError("Invalid field configuration: VALUES must be a list")
-                invalid_tags = [tag for tag in tags if tag not in allowed_values]
-                if invalid_tags:
-                    raise ValidationError(
-                        f"Invalid tags for field '{field.name}': {', '.join(invalid_tags)}. "
-                        f"Allowed values: {', '.join(allowed_values)}"
-                    )
-            return tags
-
-        case FieldType.DATETIME:
-            # Try common datetime formats
-            for fmt in [
-                "%Y-%m-%dT%H:%M:%S",
-                "%Y-%m-%d %H:%M:%S",
-                "%Y-%m-%d",
-                "%Y-%m-%dT%H:%M:%S.%f",
-                "%Y-%m-%dT%H:%M:%SZ",
-            ]:
-                try:
-                    return datetime.strptime(raw_value, fmt)  # noqa: DTZ007
-                except ValueError:
-                    continue
-            raise ValidationError(f"Invalid datetime format for field '{field.name}': {raw_value}")
-
-        case _:
-            raise ValidationError(f"Unknown field type: {field.type}")
+    validator = get_validator(field.type)
+    return validator.parse_value(field, raw_value)
 
 
-def _validate_numeric_range(field: SpaceField, value: float) -> None:
-    """Validate numeric value is within min/max range."""
-    if FieldOption.MIN in field.options:
-        min_val = field.options[FieldOption.MIN]
-        if isinstance(min_val, (int, float)) and value < min_val:
-            raise ValidationError(f"Value for field '{field.name}' is below minimum: {value} < {min_val}")
+def validate_space_field(field: SpaceField) -> SpaceField:
+    """Validate field definition.
 
-    if FieldOption.MAX in field.options:
-        max_val = field.options[FieldOption.MAX]
-        if isinstance(max_val, (int, float)) and value > max_val:
-            raise ValidationError(f"Value for field '{field.name}' is above maximum: {value} > {max_val}")
+    Returns a validated SpaceField.
+    """
+    validator = get_validator(field.type)
+    return validator.validate_definition(field)
 
 
 def parse_raw_fields(space_fields: list[SpaceField], raw_fields: dict[str, str]) -> dict[str, FieldValueType]:
@@ -146,35 +72,3 @@ def parse_raw_fields(space_fields: list[SpaceField], raw_fields: dict[str, str])
             parsed_fields[field.name] = field.default
 
     return parsed_fields
-
-
-def validate_space_field(field: SpaceField) -> SpaceField:
-    """Validate field definition.
-
-    Returns a validated SpaceField.
-    """
-    # Validate field name format
-    if not field.name or not field.name.replace("_", "").isalnum():
-        raise ValidationError(f"Invalid field name: {field.name}")
-
-    # Type-specific validation
-    match field.type:
-        case FieldType.STRING_CHOICE:
-            if FieldOption.VALUES not in field.options:
-                raise ValidationError("String choice fields must have 'values' option")
-            values = field.options[FieldOption.VALUES]
-            if not isinstance(values, list) or not all(isinstance(v, str) for v in values):
-                raise ValidationError("String choice 'values' must be a list of strings")
-
-        case FieldType.INT | FieldType.FLOAT:
-            for opt in (FieldOption.MIN, FieldOption.MAX):
-                if opt in field.options:
-                    val = field.options[opt]
-                    if not isinstance(val, (int, float)):
-                        raise ValidationError(f"{opt} must be numeric")
-
-        case FieldType.BOOLEAN:
-            if field.default is not None and not isinstance(field.default, bool):
-                raise ValidationError("Boolean field default must be boolean")
-
-    return field
