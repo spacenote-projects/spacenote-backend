@@ -104,13 +104,14 @@ class UserValidator(FieldValidator):
             user = self.get_member_by_id(user_id)
             if not user:
                 raise ValidationError(f"User with ID '{user_id}' is not a member of this space")
-            return str(user_id)
         except ValueError:
             # Not a UUID, try as username
             user = self.get_member_by_username(raw_value)
             if not user:
                 raise ValidationError(f"User '{raw_value}' not found or not a member of this space") from None
-            return str(user.id)
+            return user.id
+        else:
+            return user_id
 
     def validate_definition(self, field: SpaceField) -> SpaceField:
         if not field.name or not field.name.replace("_", "").isalnum():
@@ -129,7 +130,7 @@ class UserValidator(FieldValidator):
                 user = self.get_member_by_username(field.default)
                 if not user:
                     raise ValidationError(f"Default user '{field.default}' not found or not a member of this space") from None
-                field.default = str(user.id)
+                field.default = user.id
 
         return field
 

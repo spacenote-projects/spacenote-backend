@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from enum import StrEnum
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -9,7 +10,7 @@ from pydantic import BaseModel, Field
 FieldOptionValueType = list[str] | int | float
 
 # Type for actual field values in notes
-FieldValueType = str | bool | list[str] | int | float | datetime | None
+FieldValueType = str | bool | list[str] | int | float | datetime | UUID | None
 
 
 class FieldType(StrEnum):

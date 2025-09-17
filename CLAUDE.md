@@ -19,6 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `just agent-start` - Start the application on port 3101
 - `just agent-stop` - Stop the application
 - `just dev` - Never run this command. It's for humans only.
+- `just lint` - Run linters after making code changes
 
 ## API Testing
 
@@ -32,4 +33,5 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **NEVER kill or interact with port 3100** - This port is reserved for human developers only!
 - **Always use port 3101 for agent testing** - The `just agent-start` command automatically uses port 3101
+- **Never create test files** - We are in prototype mode. No tests are needed yet. If testing is absolutely necessary for some reason, ask for permission first
 
