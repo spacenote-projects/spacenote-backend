@@ -44,6 +44,7 @@ class Services:
     from spacenote.core.modules.comment.service import CommentService  # noqa: PLC0415
     from spacenote.core.modules.counter.service import CounterService  # noqa: PLC0415
     from spacenote.core.modules.export.service import ExportService  # noqa: PLC0415
+    from spacenote.core.modules.field.service import FieldService  # noqa: PLC0415
     from spacenote.core.modules.note.service import NoteService  # noqa: PLC0415
     from spacenote.core.modules.session.service import SessionService  # noqa: PLC0415
     from spacenote.core.modules.space.service import SpaceService  # noqa: PLC0415
@@ -54,6 +55,7 @@ class Services:
     session: SessionService
     access: AccessService
     counter: CounterService
+    field: FieldService
     note: NoteService
     comment: CommentService
     export: ExportService
@@ -71,6 +73,7 @@ class Services:
             ("session", "spacenote.core.modules.session.service", "SessionService"),
             ("access", "spacenote.core.modules.access.service", "AccessService"),
             ("counter", "spacenote.core.modules.counter.service", "CounterService"),
+            ("field", "spacenote.core.modules.field.service", "FieldService"),
             ("note", "spacenote.core.modules.note.service", "NoteService"),
             ("comment", "spacenote.core.modules.comment.service", "CommentService"),
             ("export", "spacenote.core.modules.export.service", "ExportService"),
