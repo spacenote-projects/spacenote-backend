@@ -110,6 +110,17 @@ class SpaceService(Service):
         await self._collection.update_one({"_id": space_id}, {"$pull": {"members": user_id}})
         await self.update_space_cache(space_id)
 
+    async def update_template(self, space_id: UUID, template_name: str, template_content: str | None) -> Space:
+        """Update a specific template for a space."""
+        self.get_space(space_id)
+
+        if template_name not in ["note_detail", "note_list"]:
+            raise ValidationError(f"Invalid template name: '{template_name}'. Must be 'note_detail' or 'note_list'")
+
+        await self._collection.update_one({"_id": space_id}, {"$set": {f"templates.{template_name}": template_content}})
+
+        return await self.update_space_cache(space_id)
+
     async def delete_space(self, space_id: UUID) -> None:
         """Delete a space and remove from cache."""
         result = await self._collection.delete_one({"_id": space_id})

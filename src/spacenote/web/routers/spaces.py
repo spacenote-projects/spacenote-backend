@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
@@ -110,6 +112,41 @@ async def add_member_to_space(space_slug: str, req: AddMemberRequest, app: AppDe
 )
 async def remove_member_from_space(space_slug: str, username: str, app: AppDep, auth_token: AuthTokenDep) -> None:
     await app.remove_space_member(auth_token, space_slug, username)
+
+
+class UpdateSpaceTemplateRequest(BaseModel):
+    """Request to update a space template."""
+
+    name: Literal["note_detail", "note_list"] = Field(..., description="Template name to update")
+    content: str | None = Field(..., description="Template content (Liquid template) or null to clear")
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "name": "note_detail",
+                    "content": "# {{ note.title }}\n\n{{ note.description }}",
+                }
+            ]
+        }
+    }
+
+
+@router.patch(
+    "/spaces/{space_slug}/templates",
+    summary="Update space template",
+    description="Update a specific template for a space. Only space members can update templates.",
+    operation_id="updateSpaceTemplate",
+    responses={
+        200: {"description": "Template updated successfully"},
+        400: {"model": ErrorResponse, "description": "Invalid template name"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Not a member of this space"},
+        404: {"model": ErrorResponse, "description": "Space not found"},
+    },
+)
+async def update_space_template(space_slug: str, req: UpdateSpaceTemplateRequest, app: AppDep, auth_token: AuthTokenDep) -> Space:
+    return await app.update_space_template(auth_token, space_slug, req.name, req.content)
 
 
 @router.delete(

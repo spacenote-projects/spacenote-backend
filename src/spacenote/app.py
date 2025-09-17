@@ -129,6 +129,14 @@ class App:
         user = self._resolve_user(username)
         await self._core.services.space.remove_member(space.id, user.id)
 
+    async def update_space_template(
+        self, auth_token: AuthToken, space_slug: str, template_name: str, template_content: str | None
+    ) -> Space:
+        """Update a specific template for a space (members only)."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.space.update_template(space.id, template_name, template_content)
+
     async def delete_space(self, auth_token: AuthToken, space_slug: str) -> None:
         """Delete a space and all its data (admin only)."""
         await self._core.services.access.ensure_admin(auth_token)
