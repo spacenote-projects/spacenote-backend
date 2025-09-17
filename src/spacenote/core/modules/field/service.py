@@ -5,7 +5,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
 from spacenote.core.modules.field.models import FieldValueType, SpaceField
-from spacenote.core.modules.field.validator_types import create_validator
+from spacenote.core.modules.field.validators import create_validator
 from spacenote.errors import ValidationError
 
 
