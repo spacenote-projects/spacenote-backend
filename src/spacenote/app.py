@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from spacenote.config import Config
 from spacenote.core.core import Core
 from spacenote.core.modules.comment.models import Comment
+from spacenote.core.modules.export.models import ExportData
 from spacenote.core.modules.field.models import SpaceField
 from spacenote.core.modules.note.models import Note
 from spacenote.core.modules.session.models import AuthToken
@@ -147,6 +148,19 @@ class App:
         await self._core.services.note.delete_notes_by_space(space.id)
         await self._core.services.counter.delete_counters_by_space(space.id)
         await self._core.services.space.delete_space(space.id)
+
+    async def export_space(self, auth_token: AuthToken, space_slug: str) -> ExportData:
+        """Export a space configuration (member only)."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.export.export_space(space_slug)
+
+    async def import_space(
+        self, auth_token: AuthToken, export_data: ExportData, new_slug: str | None = None, create_missing_users: bool = False
+    ) -> Space:
+        """Import a space configuration (authenticated only)."""
+        await self._core.services.access.ensure_authenticated(auth_token)
+        return await self._core.services.export.import_space(export_data, new_slug, create_missing_users)
 
     # === Private resolver methods ===
     def _resolve_space(self, slug: str) -> Space:
