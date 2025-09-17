@@ -63,7 +63,10 @@ class NoteService(Service):
         if author_id not in space.members:
             raise NotFoundError(f"User {author_id} is not a member of space {space_id}")
 
-        parsed_fields = parse_raw_fields(space.fields, raw_fields)
+        # Get space members for validation
+        members = [self.core.services.user.get_user(uid) for uid in space.members]
+
+        parsed_fields = parse_raw_fields(space.fields, raw_fields, space, members)
         next_number = await self.core.services.counter.get_next_sequence(space_id, CounterType.NOTE)
         res = await self._collection.insert_one(
             Note(

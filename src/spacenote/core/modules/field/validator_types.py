@@ -2,13 +2,34 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
+from uuid import UUID
 
 from spacenote.core.modules.field.models import FieldOption, FieldType, FieldValueType, SpaceField
+from spacenote.core.modules.space.models import Space
+from spacenote.core.modules.user.models import User
 from spacenote.errors import ValidationError
 
 
 class FieldValidator(ABC):
     """Abstract base class for field validators."""
+
+    def __init__(self, space: Space, members: list[User]) -> None:
+        """Initialize validator with space context.
+
+        Args:
+            space: The space this validator is operating on
+            members: List of User objects who are members of the space
+        """
+        self.space = space
+        self.members = members
+
+    def get_member_by_username(self, username: str) -> User | None:
+        """Helper to find member by username."""
+        return next((u for u in self.members if u.username == username), None)
+
+    def get_member_by_id(self, user_id: UUID) -> User | None:
+        """Helper to find member by ID."""
+        return next((u for u in self.members if u.id == user_id), None)
 
     @abstractmethod
     def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
@@ -76,12 +97,40 @@ class UserValidator(FieldValidator):
     def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
         if raw_value == "" and not field.required:
             return None
-        return raw_value
+
+        # Try to parse as UUID first
+        try:
+            user_id = UUID(raw_value)
+            user = self.get_member_by_id(user_id)
+            if not user:
+                raise ValidationError(f"User with ID '{user_id}' is not a member of this space")
+            return str(user_id)
+        except ValueError:
+            # Not a UUID, try as username
+            user = self.get_member_by_username(raw_value)
+            if not user:
+                raise ValidationError(f"User '{raw_value}' not found or not a member of this space") from None
+            return str(user.id)
 
     def validate_definition(self, field: SpaceField) -> SpaceField:
         if not field.name or not field.name.replace("_", "").isalnum():
             raise ValidationError(f"Invalid field name: {field.name}")
-        # TODO: In the future, transform username to UUID here if needed
+
+        # Transform default username to UUID
+        if field.default is not None and isinstance(field.default, str):
+            # Try to parse as UUID first
+            try:
+                user_id = UUID(field.default)
+                user = self.get_member_by_id(user_id)
+                if not user:
+                    raise ValidationError(f"Default user with ID '{user_id}' is not a member of this space")
+            except ValueError:
+                # Not a UUID, try as username
+                user = self.get_member_by_username(field.default)
+                if not user:
+                    raise ValidationError(f"Default user '{field.default}' not found or not a member of this space") from None
+                field.default = str(user.id)
+
         return field
 
 
@@ -268,32 +317,36 @@ class DateTimeValidator(FieldValidator):
         return field
 
 
-# Validator registry - singleton instances
-_VALIDATORS: dict[FieldType, FieldValidator] = {
-    FieldType.STRING: StringValidator(),
-    FieldType.MARKDOWN: MarkdownValidator(),
-    FieldType.USER: UserValidator(),
-    FieldType.BOOLEAN: BooleanValidator(),
-    FieldType.INT: IntValidator(),
-    FieldType.FLOAT: FloatValidator(),
-    FieldType.STRING_CHOICE: StringChoiceValidator(),
-    FieldType.TAGS: TagsValidator(),
-    FieldType.DATETIME: DateTimeValidator(),
+# Map field types to validator classes
+_VALIDATOR_CLASSES: dict[FieldType, type[FieldValidator]] = {
+    FieldType.STRING: StringValidator,
+    FieldType.MARKDOWN: MarkdownValidator,
+    FieldType.USER: UserValidator,
+    FieldType.BOOLEAN: BooleanValidator,
+    FieldType.INT: IntValidator,
+    FieldType.FLOAT: FloatValidator,
+    FieldType.STRING_CHOICE: StringChoiceValidator,
+    FieldType.TAGS: TagsValidator,
+    FieldType.DATETIME: DateTimeValidator,
 }
 
 
-def get_validator(field_type: FieldType) -> FieldValidator:
-    """Get the validator for a given field type.
+def create_validator(field_type: FieldType, space: Space, members: list[User]) -> FieldValidator:
+    """Create a validator instance for a given field type with context.
 
     Args:
-        field_type: The field type to get a validator for
+        field_type: The field type to create a validator for
+        space: The space this validator will operate on
+        members: List of User objects who are members of the space
 
     Returns:
-        The validator instance for the field type
+        A validator instance for the field type with context
 
     Raises:
         ValidationError: If the field type is unknown
     """
-    if field_type not in _VALIDATORS:
+    if field_type not in _VALIDATOR_CLASSES:
         raise ValidationError(f"Unknown field type: {field_type}")
-    return _VALIDATORS[field_type]
+
+    validator_class = _VALIDATOR_CLASSES[field_type]
+    return validator_class(space, members)
