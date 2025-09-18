@@ -28,7 +28,7 @@ class FieldService(Service):
         space = self.core.services.space.get_space(space_id)
         members = [self.core.services.user.get_user(uid) for uid in space.members]
 
-        validator = create_validator(field.type, space, members)
+        validator = create_validator(field.type, space, members, current_user_id=None)
         return validator.validate_field_definition(field)
 
     def _parse_field_value(
@@ -51,8 +51,8 @@ class FieldService(Service):
         space = self.core.services.space.get_space(space_id)
         members = [self.core.services.user.get_user(uid) for uid in space.members]
 
-        validator = create_validator(field.type, space, members)
-        return validator.parse_value(field, raw_value, current_user_id)
+        validator = create_validator(field.type, space, members, current_user_id)
+        return validator.parse_value(field, raw_value)
 
     def parse_raw_fields(
         self, space_id: UUID, raw_fields: dict[str, str], current_user_id: UUID | None = None

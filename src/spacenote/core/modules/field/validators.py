@@ -13,15 +13,17 @@ from spacenote.errors import ValidationError
 class FieldValidator(ABC):
     """Abstract base class for field validators."""
 
-    def __init__(self, space: Space, members: list[User]) -> None:
+    def __init__(self, space: Space, members: list[User], current_user_id: UUID | None = None) -> None:
         """Initialize validator with space context.
 
         Args:
             space: The space this validator is operating on
             members: List of User objects who are members of the space
+            current_user_id: The ID of the current logged-in user (optional)
         """
         self.space = space
         self.members = members
+        self.current_user_id = current_user_id
 
     def get_member_by_username(self, username: str) -> User | None:
         """Helper to find member by username."""
@@ -32,13 +34,12 @@ class FieldValidator(ABC):
         return next((u for u in self.members if u.id == user_id), None)
 
     @abstractmethod
-    def parse_value(self, field: SpaceField, raw_value: str, current_user_id: UUID | None = None) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
         """Parse a raw string value into the field's typed value.
 
         Args:
             field: The field definition from the space
             raw_value: The raw string value to parse
-            current_user_id: The ID of the current logged-in user (optional)
 
         Returns:
             The parsed value in the correct type
@@ -90,7 +91,7 @@ class FieldValidator(ABC):
 class StringValidator(FieldValidator):
     """Validator for string fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str, current_user_id: UUID | None = None) -> FieldValueType:  # noqa: ARG002
+    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
         if raw_value == "" and not field.required:
             return None
         return raw_value
@@ -102,7 +103,7 @@ class StringValidator(FieldValidator):
 class MarkdownValidator(FieldValidator):
     """Validator for markdown fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str, current_user_id: UUID | None = None) -> FieldValueType:  # noqa: ARG002
+    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
         if raw_value == "" and not field.required:
             return None
         return raw_value
@@ -114,18 +115,18 @@ class MarkdownValidator(FieldValidator):
 class UserValidator(FieldValidator):
     """Validator for user reference fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str, current_user_id: UUID | None = None) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
         if raw_value == "" and not field.required:
             return None
 
         # Handle special value $me
         if raw_value == SpecialValue.ME:
-            if not current_user_id:
+            if not self.current_user_id:
                 raise ValidationError(f"Cannot use '{SpecialValue.ME}' without a logged-in user context")
             # Verify current user is a member
-            if not self.get_member_by_id(current_user_id):
+            if not self.get_member_by_id(self.current_user_id):
                 raise ValidationError("Current user is not a member of this space")
-            return current_user_id
+            return self.current_user_id
 
         # Try to parse as UUID first
         try:
@@ -168,7 +169,7 @@ class UserValidator(FieldValidator):
 class BooleanValidator(FieldValidator):
     """Validator for boolean fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str, current_user_id: UUID | None = None) -> FieldValueType:  # noqa: ARG002
+    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
         if raw_value == "" and not field.required:
             return None
 
@@ -187,7 +188,7 @@ class BooleanValidator(FieldValidator):
 class IntValidator(FieldValidator):
     """Validator for integer fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str, current_user_id: UUID | None = None) -> FieldValueType:  # noqa: ARG002
+    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
         if raw_value == "" and not field.required:
             return None
 
@@ -223,7 +224,7 @@ class IntValidator(FieldValidator):
 class FloatValidator(FieldValidator):
     """Validator for float fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str, current_user_id: UUID | None = None) -> FieldValueType:  # noqa: ARG002
+    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
         if raw_value == "" and not field.required:
             return None
 
@@ -259,7 +260,7 @@ class FloatValidator(FieldValidator):
 class StringChoiceValidator(FieldValidator):
     """Validator for string choice (single select) fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str, current_user_id: UUID | None = None) -> FieldValueType:  # noqa: ARG002
+    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
         if raw_value == "" and not field.required:
             return None
 
@@ -285,7 +286,7 @@ class StringChoiceValidator(FieldValidator):
 class TagsValidator(FieldValidator):
     """Validator for tags (multi-value) fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str, current_user_id: UUID | None = None) -> FieldValueType:  # noqa: ARG002
+    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
         if raw_value == "" and not field.required:
             return None
 
@@ -310,7 +311,7 @@ class TagsValidator(FieldValidator):
 class DateTimeValidator(FieldValidator):
     """Validator for datetime fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str, current_user_id: UUID | None = None) -> FieldValueType:  # noqa: ARG002
+    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
         if raw_value == "" and not field.required:
             return None
 
@@ -346,13 +347,16 @@ _VALIDATOR_CLASSES: dict[FieldType, type[FieldValidator]] = {
 }
 
 
-def create_validator(field_type: FieldType, space: Space, members: list[User]) -> FieldValidator:
+def create_validator(
+    field_type: FieldType, space: Space, members: list[User], current_user_id: UUID | None = None
+) -> FieldValidator:
     """Create a validator instance for a given field type with context.
 
     Args:
         field_type: The field type to create a validator for
         space: The space this validator will operate on
         members: List of User objects who are members of the space
+        current_user_id: The ID of the current logged-in user (optional)
 
     Returns:
         A validator instance for the field type with context
@@ -364,4 +368,4 @@ def create_validator(field_type: FieldType, space: Space, members: list[User]) -
         raise ValidationError(f"Unknown field type: {field_type}")
 
     validator_class = _VALIDATOR_CLASSES[field_type]
-    return validator_class(space, members)
+    return validator_class(space, members, current_user_id)
