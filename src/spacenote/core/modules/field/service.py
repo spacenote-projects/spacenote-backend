@@ -4,7 +4,7 @@ from uuid import UUID
 from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
-from spacenote.core.modules.field.models import FieldValueType, SpaceField
+from spacenote.core.modules.field.models import FieldType, FieldValueType, SpaceField, SpecialValue
 from spacenote.core.modules.field.validators import create_validator
 from spacenote.errors import ValidationError
 
@@ -31,13 +31,16 @@ class FieldService(Service):
         validator = create_validator(field.type, space, members)
         return validator.validate_field_definition(field)
 
-    def _parse_field_value(self, field: SpaceField, raw_value: str, space_id: UUID) -> FieldValueType:
+    def _parse_field_value(
+        self, field: SpaceField, raw_value: str, space_id: UUID, current_user_id: UUID | None = None
+    ) -> FieldValueType:
         """Parse a raw string value based on field type.
 
         Args:
             field: The field definition from the space
             raw_value: The raw string value to parse
             space_id: The space ID for this validation
+            current_user_id: The ID of the current logged-in user (optional)
 
         Returns:
             The parsed value in the correct type
@@ -49,14 +52,17 @@ class FieldService(Service):
         members = [self.core.services.user.get_user(uid) for uid in space.members]
 
         validator = create_validator(field.type, space, members)
-        return validator.parse_value(field, raw_value)
+        return validator.parse_value(field, raw_value, current_user_id)
 
-    def parse_raw_fields(self, space_id: UUID, raw_fields: dict[str, str]) -> dict[str, FieldValueType]:
+    def parse_raw_fields(
+        self, space_id: UUID, raw_fields: dict[str, str], current_user_id: UUID | None = None
+    ) -> dict[str, FieldValueType]:
         """Parse raw string fields into typed values based on space field definitions.
 
         Args:
             space_id: The space ID for this validation
             raw_fields: Raw string values from the client
+            current_user_id: The ID of the current logged-in user (optional)
 
         Returns:
             Dictionary of parsed field values
@@ -82,7 +88,7 @@ class FieldService(Service):
                 raise ValidationError(f"Unknown field: {field_name}")
 
             field = field_map[field_name]
-            parsed_value = self._parse_field_value(field, raw_value, space_id)
+            parsed_value = self._parse_field_value(field, raw_value, space_id, current_user_id)
 
             # Only add non-null values
             if parsed_value is not None:
@@ -91,6 +97,12 @@ class FieldService(Service):
         # Add default values for missing optional fields
         for field in space_fields:
             if field.name not in parsed_fields and field.default is not None:
-                parsed_fields[field.name] = field.default
+                # Handle special value $me for user fields
+                if field.type == FieldType.USER and field.default == SpecialValue.ME:
+                    if current_user_id and current_user_id in space.members:
+                        parsed_fields[field.name] = current_user_id
+                    # Skip if no current user context
+                else:
+                    parsed_fields[field.name] = field.default
 
         return parsed_fields

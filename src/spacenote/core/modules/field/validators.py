@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from uuid import UUID
 
-from spacenote.core.modules.field.models import FieldOption, FieldType, FieldValueType, SpaceField
+from spacenote.core.modules.field.models import FieldOption, FieldType, FieldValueType, SpaceField, SpecialValue
 from spacenote.core.modules.space.models import Space
 from spacenote.core.modules.user.models import User
 from spacenote.errors import ValidationError
@@ -32,12 +32,13 @@ class FieldValidator(ABC):
         return next((u for u in self.members if u.id == user_id), None)
 
     @abstractmethod
-    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str, current_user_id: UUID | None = None) -> FieldValueType:
         """Parse a raw string value into the field's typed value.
 
         Args:
             field: The field definition from the space
             raw_value: The raw string value to parse
+            current_user_id: The ID of the current logged-in user (optional)
 
         Returns:
             The parsed value in the correct type
@@ -89,7 +90,7 @@ class FieldValidator(ABC):
 class StringValidator(FieldValidator):
     """Validator for string fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str, current_user_id: UUID | None = None) -> FieldValueType:  # noqa: ARG002
         if raw_value == "" and not field.required:
             return None
         return raw_value
@@ -101,7 +102,7 @@ class StringValidator(FieldValidator):
 class MarkdownValidator(FieldValidator):
     """Validator for markdown fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str, current_user_id: UUID | None = None) -> FieldValueType:  # noqa: ARG002
         if raw_value == "" and not field.required:
             return None
         return raw_value
@@ -113,9 +114,18 @@ class MarkdownValidator(FieldValidator):
 class UserValidator(FieldValidator):
     """Validator for user reference fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str, current_user_id: UUID | None = None) -> FieldValueType:
         if raw_value == "" and not field.required:
             return None
+
+        # Handle special value $me
+        if raw_value == SpecialValue.ME:
+            if not current_user_id:
+                raise ValidationError(f"Cannot use '{SpecialValue.ME}' without a logged-in user context")
+            # Verify current user is a member
+            if not self.get_member_by_id(current_user_id):
+                raise ValidationError("Current user is not a member of this space")
+            return current_user_id
 
         # Try to parse as UUID first
         try:
@@ -135,6 +145,10 @@ class UserValidator(FieldValidator):
     def _validate_type_specific_field_definition(self, field: SpaceField) -> SpaceField:
         # Transform default username to UUID
         if field.default is not None and isinstance(field.default, str):
+            # Allow special value $me
+            if field.default == SpecialValue.ME:
+                return field
+
             # Try to parse as UUID first
             try:
                 user_id = UUID(field.default)
@@ -154,7 +168,7 @@ class UserValidator(FieldValidator):
 class BooleanValidator(FieldValidator):
     """Validator for boolean fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str, current_user_id: UUID | None = None) -> FieldValueType:  # noqa: ARG002
         if raw_value == "" and not field.required:
             return None
 
@@ -173,7 +187,7 @@ class BooleanValidator(FieldValidator):
 class IntValidator(FieldValidator):
     """Validator for integer fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str, current_user_id: UUID | None = None) -> FieldValueType:  # noqa: ARG002
         if raw_value == "" and not field.required:
             return None
 
@@ -209,7 +223,7 @@ class IntValidator(FieldValidator):
 class FloatValidator(FieldValidator):
     """Validator for float fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str, current_user_id: UUID | None = None) -> FieldValueType:  # noqa: ARG002
         if raw_value == "" and not field.required:
             return None
 
@@ -245,7 +259,7 @@ class FloatValidator(FieldValidator):
 class StringChoiceValidator(FieldValidator):
     """Validator for string choice (single select) fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str, current_user_id: UUID | None = None) -> FieldValueType:  # noqa: ARG002
         if raw_value == "" and not field.required:
             return None
 
@@ -271,7 +285,7 @@ class StringChoiceValidator(FieldValidator):
 class TagsValidator(FieldValidator):
     """Validator for tags (multi-value) fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str, current_user_id: UUID | None = None) -> FieldValueType:  # noqa: ARG002
         if raw_value == "" and not field.required:
             return None
 
@@ -296,7 +310,7 @@ class TagsValidator(FieldValidator):
 class DateTimeValidator(FieldValidator):
     """Validator for datetime fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str, current_user_id: UUID | None = None) -> FieldValueType:  # noqa: ARG002
         if raw_value == "" and not field.required:
             return None
 
