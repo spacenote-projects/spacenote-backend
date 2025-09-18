@@ -29,7 +29,7 @@ class FieldService(Service):
         members = [self.core.services.user.get_user(uid) for uid in space.members]
 
         validator = create_validator(field.type, space, members)
-        return validator.validate_definition(field)
+        return validator.validate_field_definition(field)
 
     def _parse_field_value(self, field: SpaceField, raw_value: str, space_id: UUID) -> FieldValueType:
         """Parse a raw string value based on field type.

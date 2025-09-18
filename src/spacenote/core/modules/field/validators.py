@@ -46,11 +46,34 @@ class FieldValidator(ABC):
             ValidationError: If the value cannot be parsed or validated
         """
 
-    @abstractmethod
-    def validate_definition(self, field: SpaceField) -> SpaceField:
+    def validate_field_definition(self, field: SpaceField) -> SpaceField:
         """Validate and transform field definition for storage.
 
-        May transform values (e.g., username → UUID for USER fields).
+        Template method that validates field name first, then delegates
+        to subclass for type-specific validation.
+
+        Args:
+            field: The field definition to validate
+
+        Returns:
+            The validated and normalized SpaceField
+
+        Raises:
+            ValidationError: If the field definition is invalid
+        """
+        # Always validate field name first
+        if not field.name or not field.name.replace("_", "").isalnum():
+            raise ValidationError(f"Invalid field name: {field.name}")
+
+        # Then delegate to subclass for type-specific validation
+        return self._validate_type_specific_field_definition(field)
+
+    @abstractmethod
+    def _validate_type_specific_field_definition(self, field: SpaceField) -> SpaceField:
+        """Validate type-specific field definition.
+
+        Override in subclasses to provide type-specific validation.
+        Field name validation is already done by the base class.
 
         Args:
             field: The field definition to validate
@@ -71,9 +94,7 @@ class StringValidator(FieldValidator):
             return None
         return raw_value
 
-    def validate_definition(self, field: SpaceField) -> SpaceField:
-        if not field.name or not field.name.replace("_", "").isalnum():
-            raise ValidationError(f"Invalid field name: {field.name}")
+    def _validate_type_specific_field_definition(self, field: SpaceField) -> SpaceField:
         return field
 
 
@@ -85,9 +106,7 @@ class MarkdownValidator(FieldValidator):
             return None
         return raw_value
 
-    def validate_definition(self, field: SpaceField) -> SpaceField:
-        if not field.name or not field.name.replace("_", "").isalnum():
-            raise ValidationError(f"Invalid field name: {field.name}")
+    def _validate_type_specific_field_definition(self, field: SpaceField) -> SpaceField:
         return field
 
 
@@ -113,10 +132,7 @@ class UserValidator(FieldValidator):
         else:
             return user_id
 
-    def validate_definition(self, field: SpaceField) -> SpaceField:
-        if not field.name or not field.name.replace("_", "").isalnum():
-            raise ValidationError(f"Invalid field name: {field.name}")
-
+    def _validate_type_specific_field_definition(self, field: SpaceField) -> SpaceField:
         # Transform default username to UUID
         if field.default is not None and isinstance(field.default, str):
             # Try to parse as UUID first
@@ -148,10 +164,7 @@ class BooleanValidator(FieldValidator):
             return False
         raise ValidationError(f"Invalid boolean value for field '{field.name}': {raw_value}")
 
-    def validate_definition(self, field: SpaceField) -> SpaceField:
-        if not field.name or not field.name.replace("_", "").isalnum():
-            raise ValidationError(f"Invalid field name: {field.name}")
-
+    def _validate_type_specific_field_definition(self, field: SpaceField) -> SpaceField:
         if field.default is not None and not isinstance(field.default, bool):
             raise ValidationError("Boolean field default must be boolean")
         return field
@@ -172,10 +185,7 @@ class IntValidator(FieldValidator):
         self._validate_numeric_range(field, int_value)
         return int_value
 
-    def validate_definition(self, field: SpaceField) -> SpaceField:
-        if not field.name or not field.name.replace("_", "").isalnum():
-            raise ValidationError(f"Invalid field name: {field.name}")
-
+    def _validate_type_specific_field_definition(self, field: SpaceField) -> SpaceField:
         for opt in (FieldOption.MIN, FieldOption.MAX):
             if opt in field.options:
                 val = field.options[opt]
@@ -211,10 +221,7 @@ class FloatValidator(FieldValidator):
         self._validate_numeric_range(field, float_value)
         return float_value
 
-    def validate_definition(self, field: SpaceField) -> SpaceField:
-        if not field.name or not field.name.replace("_", "").isalnum():
-            raise ValidationError(f"Invalid field name: {field.name}")
-
+    def _validate_type_specific_field_definition(self, field: SpaceField) -> SpaceField:
         for opt in (FieldOption.MIN, FieldOption.MAX):
             if opt in field.options:
                 val = field.options[opt]
@@ -252,10 +259,7 @@ class StringChoiceValidator(FieldValidator):
                 )
         return raw_value
 
-    def validate_definition(self, field: SpaceField) -> SpaceField:
-        if not field.name or not field.name.replace("_", "").isalnum():
-            raise ValidationError(f"Invalid field name: {field.name}")
-
+    def _validate_type_specific_field_definition(self, field: SpaceField) -> SpaceField:
         if FieldOption.VALUES not in field.options:
             raise ValidationError("String choice fields must have 'values' option")
         values = field.options[FieldOption.VALUES]
@@ -285,9 +289,7 @@ class TagsValidator(FieldValidator):
                 )
         return tags
 
-    def validate_definition(self, field: SpaceField) -> SpaceField:
-        if not field.name or not field.name.replace("_", "").isalnum():
-            raise ValidationError(f"Invalid field name: {field.name}")
+    def _validate_type_specific_field_definition(self, field: SpaceField) -> SpaceField:
         return field
 
 
@@ -312,9 +314,7 @@ class DateTimeValidator(FieldValidator):
                 continue
         raise ValidationError(f"Invalid datetime format for field '{field.name}': {raw_value}")
 
-    def validate_definition(self, field: SpaceField) -> SpaceField:
-        if not field.name or not field.name.replace("_", "").isalnum():
-            raise ValidationError(f"Invalid field name: {field.name}")
+    def _validate_type_specific_field_definition(self, field: SpaceField) -> SpaceField:
         return field
 
 
