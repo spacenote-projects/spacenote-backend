@@ -4,7 +4,7 @@ from uuid import UUID
 from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
-from spacenote.core.modules.field.models import FieldType, FieldValueType, SpaceField, SpecialValue
+from spacenote.core.modules.field.models import FieldValueType, SpaceField
 from spacenote.core.modules.field.validators import create_validator
 from spacenote.errors import ValidationError
 
@@ -32,13 +32,13 @@ class FieldService(Service):
         return validator.validate_field_definition(field)
 
     def _parse_field_value(
-        self, field: SpaceField, raw_value: str, space_id: UUID, current_user_id: UUID | None = None
+        self, field: SpaceField, raw_value: str | None, space_id: UUID, current_user_id: UUID | None = None
     ) -> FieldValueType:
         """Parse a raw string value based on field type.
 
         Args:
             field: The field definition from the space
-            raw_value: The raw string value to parse
+            raw_value: The raw string value to parse, or None to use default
             space_id: The space ID for this validation
             current_user_id: The ID of the current logged-in user (optional)
 
@@ -71,38 +71,15 @@ class FieldService(Service):
             ValidationError: If required fields are missing or values are invalid
         """
         space = self.core.services.space.get_space(space_id)
-        space_fields = space.fields
         parsed_fields: dict[str, FieldValueType] = {}
 
-        # Create a map for quick lookup
-        field_map = {field.name: field for field in space_fields}
-
-        # Check for required fields
-        for field in space_fields:
-            if field.required and field.name not in raw_fields:
-                raise ValidationError(f"Required field missing: {field.name}")
-
-        # Parse each provided field
-        for field_name, raw_value in raw_fields.items():
-            if field_name not in field_map:
+        # Check for unknown fields first
+        for field_name in raw_fields:
+            if space.get_field(field_name) is None:
                 raise ValidationError(f"Unknown field: {field_name}")
 
-            field = field_map[field_name]
-            parsed_value = self._parse_field_value(field, raw_value, space_id, current_user_id)
-
-            # Only add non-null values
-            if parsed_value is not None:
-                parsed_fields[field_name] = parsed_value
-
-        # Add default values for missing optional fields
-        for field in space_fields:
-            if field.name not in parsed_fields and field.default is not None:
-                # Handle special value $me for user fields
-                if field.type == FieldType.USER and field.default == SpecialValue.ME:
-                    if current_user_id and current_user_id in space.members:
-                        parsed_fields[field.name] = current_user_id
-                    # Skip if no current user context
-                else:
-                    parsed_fields[field.name] = field.default
+        # Parse each field (provided and missing)
+        for field in space.fields:
+            parsed_fields[field.name] = self._parse_field_value(field, raw_fields.get(field.name), space_id, current_user_id)
 
         return parsed_fields

@@ -34,18 +34,19 @@ class FieldValidator(ABC):
         return next((u for u in self.members if u.id == user_id), None)
 
     @abstractmethod
-    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str | None) -> FieldValueType:
         """Parse a raw string value into the field's typed value.
 
         Args:
             field: The field definition from the space
-            raw_value: The raw string value to parse
+            raw_value: The raw string value to parse, or None to use default
 
         Returns:
             The parsed value in the correct type
 
         Raises:
-            ValidationError: If the value cannot be parsed or validated
+            ValidationError: If the value cannot be parsed or validated,
+                           or if None is passed for a required field without a default
         """
 
     def validate_field_definition(self, field: SpaceField) -> SpaceField:
@@ -91,7 +92,13 @@ class FieldValidator(ABC):
 class StringValidator(FieldValidator):
     """Validator for string fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str | None) -> FieldValueType:
+        if raw_value is None:
+            if field.default is not None:
+                return field.default
+            if field.required:
+                raise ValidationError(f"Required field '{field.name}' has no value")
+            return None
         if raw_value == "" and not field.required:
             return None
         return raw_value
@@ -103,7 +110,13 @@ class StringValidator(FieldValidator):
 class MarkdownValidator(FieldValidator):
     """Validator for markdown fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str | None) -> FieldValueType:
+        if raw_value is None:
+            if field.default is not None:
+                return field.default
+            if field.required:
+                raise ValidationError(f"Required field '{field.name}' has no value")
+            return None
         if raw_value == "" and not field.required:
             return None
         return raw_value
@@ -115,7 +128,22 @@ class MarkdownValidator(FieldValidator):
 class UserValidator(FieldValidator):
     """Validator for user reference fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str | None) -> FieldValueType:
+        if raw_value is None:
+            if field.default is not None:
+                # Handle special value $me as default
+                if field.default == SpecialValue.ME:
+                    if not self.current_user_id:
+                        raise ValidationError(f"Cannot use '{SpecialValue.ME}' without a logged-in user context")
+                    # Verify current user is a member
+                    if not self.get_member_by_id(self.current_user_id):
+                        raise ValidationError("Current user is not a member of this space")
+                    return self.current_user_id
+                return field.default
+            if field.required:
+                raise ValidationError(f"Required field '{field.name}' has no value")
+            return None
+
         if raw_value == "" and not field.required:
             return None
 
@@ -169,7 +197,14 @@ class UserValidator(FieldValidator):
 class BooleanValidator(FieldValidator):
     """Validator for boolean fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str | None) -> FieldValueType:
+        if raw_value is None:
+            if field.default is not None:
+                return field.default
+            if field.required:
+                raise ValidationError(f"Required field '{field.name}' has no value")
+            return None
+
         if raw_value == "" and not field.required:
             return None
 
@@ -188,7 +223,14 @@ class BooleanValidator(FieldValidator):
 class IntValidator(FieldValidator):
     """Validator for integer fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str | None) -> FieldValueType:
+        if raw_value is None:
+            if field.default is not None:
+                return field.default
+            if field.required:
+                raise ValidationError(f"Required field '{field.name}' has no value")
+            return None
+
         if raw_value == "" and not field.required:
             return None
 
@@ -224,7 +266,14 @@ class IntValidator(FieldValidator):
 class FloatValidator(FieldValidator):
     """Validator for float fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str | None) -> FieldValueType:
+        if raw_value is None:
+            if field.default is not None:
+                return field.default
+            if field.required:
+                raise ValidationError(f"Required field '{field.name}' has no value")
+            return None
+
         if raw_value == "" and not field.required:
             return None
 
@@ -260,7 +309,14 @@ class FloatValidator(FieldValidator):
 class StringChoiceValidator(FieldValidator):
     """Validator for string choice (single select) fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str | None) -> FieldValueType:
+        if raw_value is None:
+            if field.default is not None:
+                return field.default
+            if field.required:
+                raise ValidationError(f"Required field '{field.name}' has no value")
+            return None
+
         if raw_value == "" and not field.required:
             return None
 
@@ -286,7 +342,14 @@ class StringChoiceValidator(FieldValidator):
 class TagsValidator(FieldValidator):
     """Validator for tags (multi-value) fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str | None) -> FieldValueType:
+        if raw_value is None:
+            if field.default is not None:
+                return field.default
+            if field.required:
+                raise ValidationError(f"Required field '{field.name}' has no value")
+            return None
+
         if raw_value == "" and not field.required:
             return None
 
@@ -311,7 +374,14 @@ class TagsValidator(FieldValidator):
 class DateTimeValidator(FieldValidator):
     """Validator for datetime fields."""
 
-    def parse_value(self, field: SpaceField, raw_value: str) -> FieldValueType:
+    def parse_value(self, field: SpaceField, raw_value: str | None) -> FieldValueType:
+        if raw_value is None:
+            if field.default is not None:
+                return field.default
+            if field.required:
+                raise ValidationError(f"Required field '{field.name}' has no value")
+            return None
+
         if raw_value == "" and not field.required:
             return None
 
