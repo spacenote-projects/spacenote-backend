@@ -6,7 +6,6 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote import utils
 from spacenote.core.core import Service
-from spacenote.core.modules.field.models import SpaceField
 from spacenote.core.modules.space.models import Space
 from spacenote.errors import NotFoundError, ValidationError
 
@@ -73,17 +72,6 @@ class SpaceService(Service):
             Space(slug=slug, title=title, description=description, members=[member]).to_mongo()
         )
         return await self.update_space_cache(res.inserted_id)
-
-    async def add_field(self, space_id: UUID, field: SpaceField) -> Space:
-        """Add a field to a space with validation."""
-        space = self.get_space(space_id)
-        if space.get_field(field.name) is not None:
-            raise ValidationError(f"Field '{field.name}' already exists in space")
-
-        validated_field = self.core.services.field.validate_field_definition(space_id, field)
-        await self._collection.update_one({"_id": space_id}, {"$push": {"fields": validated_field.model_dump()}})
-
-        return await self.update_space_cache(space_id)
 
     async def add_member(self, space_id: UUID, user_id: UUID) -> Space:
         """Add a member to a space."""

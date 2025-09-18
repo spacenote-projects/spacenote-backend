@@ -68,7 +68,8 @@ class App:
         """Add custom field to space (members only)."""
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
-        return await self._core.services.space.add_field(space.id, field)
+        await self._core.services.field.add_field_to_space(space.id, field)
+        return self._resolve_space(space_slug)
 
     async def get_notes_by_space(
         self, auth_token: AuthToken, space_slug: str, limit: int = 50, offset: int = 0
@@ -161,6 +162,12 @@ class App:
         """Import a space configuration (authenticated only)."""
         await self._core.services.access.ensure_authenticated(auth_token)
         return await self._core.services.export.import_space(export_data, new_slug, create_missing_users)
+
+    async def remove_field_from_space(self, auth_token: AuthToken, space_slug: str, field_name: str) -> None:
+        """Remove field from space (members only)."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        await self._core.services.field.remove_field_from_space(space.id, field_name)
 
     # === Private resolver methods ===
     def _resolve_space(self, slug: str) -> Space:

@@ -114,7 +114,7 @@ class ExportService(Service):
 
         if export_data.space.fields:
             for field in export_data.space.fields:
-                await self.core.services.space.add_field(space.id, field)
+                await self.core.services.field.add_field_to_space(space.id, field)
 
         if export_data.space.templates.note_detail:
             await self.core.services.space.update_template(space.id, "note_detail", export_data.space.templates.note_detail)

@@ -6,7 +6,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 from spacenote.core.core import Service
 from spacenote.core.modules.field.models import FieldValueType, SpaceField
 from spacenote.core.modules.field.validators import create_validator
-from spacenote.errors import ValidationError
+from spacenote.errors import NotFoundError, ValidationError
 
 
 class FieldService(Service):
@@ -83,3 +83,49 @@ class FieldService(Service):
             parsed_fields[field.name] = self._parse_field_value(field, raw_fields.get(field.name), space_id, current_user_id)
 
         return parsed_fields
+
+    async def add_field_to_space(self, space_id: UUID, field: SpaceField) -> None:
+        """Add a field to a space with validation.
+
+        Args:
+            space_id: The space to add the field to
+            field: The field definition to add
+
+        Raises:
+            ValidationError: If field already exists or is invalid
+            NotFoundError: If space not found
+        """
+        space = self.core.services.space.get_space(space_id)
+        if space.get_field(field.name) is not None:
+            raise ValidationError(f"Field '{field.name}' already exists in space")
+
+        validated_field = self.validate_field_definition(space_id, field)
+        spaces_collection = self.database["spaces"]
+        await spaces_collection.update_one({"_id": space_id}, {"$push": {"fields": validated_field.model_dump()}})
+        await self.core.services.space.update_space_cache(space_id)
+
+    async def remove_field_from_space(self, space_id: UUID, field_name: str) -> None:
+        """Remove a field from a space.
+
+        Args:
+            space_id: The space to remove the field from
+            field_name: The name of the field to remove
+
+        Raises:
+            ValidationError: If field is in use or doesn't exist
+            NotFoundError: If space not found
+        """
+        space = self.core.services.space.get_space(space_id)
+        field = space.get_field(field_name)
+        if field is None:
+            raise NotFoundError(f"Field '{field_name}' not found in space")
+
+        # Check if field is used in any notes
+        notes_collection = self.database["notes"]
+        note_count = await notes_collection.count_documents({"space_id": space_id, f"fields.{field_name}": {"$exists": True}})
+        if note_count > 0:
+            raise ValidationError(f"Cannot remove field '{field_name}' - it is used in {note_count} note(s)")
+
+        spaces_collection = self.database["spaces"]
+        await spaces_collection.update_one({"_id": space_id}, {"$pull": {"fields": {"name": field_name}}})
+        await self.core.services.space.update_space_cache(space_id)
