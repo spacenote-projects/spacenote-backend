@@ -6,6 +6,7 @@ from spacenote.core.core import Core
 from spacenote.core.modules.comment.models import Comment
 from spacenote.core.modules.export.models import ExportData
 from spacenote.core.modules.field.models import SpaceField
+from spacenote.core.modules.filter.models import Filter
 from spacenote.core.modules.note.models import Note
 from spacenote.core.modules.session.models import AuthToken
 from spacenote.core.modules.space.models import Space
@@ -168,6 +169,19 @@ class App:
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         await self._core.services.field.remove_field_from_space(space.id, field_name)
+
+    async def add_filter_to_space(self, auth_token: AuthToken, space_slug: str, filter: Filter) -> Space:
+        """Add custom filter to space (members only)."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        await self._core.services.filter.add_filter_to_space(space.id, filter)
+        return self._resolve_space(space_slug)
+
+    async def remove_filter_from_space(self, auth_token: AuthToken, space_slug: str, filter_name: str) -> None:
+        """Remove filter from space (members only)."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        await self._core.services.filter.remove_filter_from_space(space.id, filter_name)
 
     # === Private resolver methods ===
     def _resolve_space(self, slug: str) -> Space:
