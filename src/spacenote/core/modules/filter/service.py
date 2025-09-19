@@ -4,7 +4,10 @@ from uuid import UUID
 from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
-from spacenote.core.modules.filter.models import Filter
+from spacenote.core.modules.field.models import FieldType
+from spacenote.core.modules.filter.models import Filter, FilterOperator
+from spacenote.core.modules.filter.validators import validate_filter_value
+from spacenote.errors import ValidationError
 
 
 class FilterService(Service):
@@ -24,7 +27,82 @@ class FilterService(Service):
             ValidationError: If filter already exists or is invalid
             NotFoundError: If space not found
         """
-        raise NotImplementedError
+        space = self.core.services.space.get_space(space_id)
+
+        # Validate filter name is unique
+        if space.get_filter(filter.name) is not None:
+            raise ValidationError(f"Filter '{filter.name}' already exists in space")
+
+        # Validate filter name format (alphanumeric + underscores)
+        if not filter.name or not filter.name.replace("_", "").isalnum():
+            raise ValidationError(f"Invalid filter name: {filter.name}")
+
+        # Validate all fields in conditions exist in the space
+        for condition in filter.conditions:
+            field = space.get_field(condition.field)
+            if field is None:
+                raise ValidationError(f"Field '{condition.field}' referenced in filter condition does not exist in space")
+
+            # Validate operator is compatible with field type
+            self._validate_operator_for_field_type(field.type, condition.operator, condition.field)
+
+            # Validate the value is compatible with the field type and operator
+            validate_filter_value(field, condition.operator, condition.value)
+
+        # Validate all fields in list_fields exist in the space
+        for field_name in filter.list_fields:
+            if space.get_field(field_name) is None:
+                raise ValidationError(f"Field '{field_name}' in list_fields does not exist in space")
+
+        # Validate all fields in sort exist in the space
+        for sort_field in filter.sort:
+            # Remove '-' prefix if present for descending sort
+            field_name = sort_field.lstrip("-")
+            if space.get_field(field_name) is None:
+                raise ValidationError(f"Field '{field_name}' in sort does not exist in space")
+
+        # Add filter to space
+        spaces_collection = self.database["spaces"]
+        await spaces_collection.update_one({"_id": space_id}, {"$push": {"filters": filter.model_dump()}})
+        await self.core.services.space.update_space_cache(space_id)
+
+    def _validate_operator_for_field_type(self, field_type: FieldType, operator: FilterOperator, field_name: str) -> None:
+        """Validate that an operator is compatible with a field type."""
+        # Text operators - valid for string, markdown
+        text_operators = {
+            FilterOperator.EQ,
+            FilterOperator.NE,
+            FilterOperator.CONTAINS,
+            FilterOperator.STARTSWITH,
+            FilterOperator.ENDSWITH,
+        }
+
+        # List operators - valid for tags
+        list_operators = {FilterOperator.IN, FilterOperator.NIN, FilterOperator.ALL}
+
+        # Numeric/date operators - valid for int, float, datetime
+        comparison_operators = {FilterOperator.GT, FilterOperator.GTE, FilterOperator.LT, FilterOperator.LTE}
+
+        # Universal operators - valid for all types
+        universal_operators = {FilterOperator.EQ, FilterOperator.NE}
+
+        if field_type in (FieldType.STRING, FieldType.MARKDOWN):
+            valid_operators = text_operators
+        elif field_type == FieldType.TAGS:
+            valid_operators = list_operators | universal_operators
+        elif field_type in (FieldType.INT, FieldType.FLOAT, FieldType.DATETIME):
+            valid_operators = comparison_operators | universal_operators
+        elif field_type == FieldType.BOOLEAN:
+            valid_operators = universal_operators
+        elif field_type == FieldType.STRING_CHOICE:
+            valid_operators = universal_operators | {FilterOperator.IN, FilterOperator.NIN}
+        elif field_type == FieldType.USER:
+            valid_operators = universal_operators
+        else:
+            raise ValidationError(f"Unknown field type: {field_type}")
+
+        if operator not in valid_operators:
+            raise ValidationError(f"Operator '{operator}' is not valid for field '{field_name}' of type '{field_type}'")
 
     async def remove_filter_from_space(self, space_id: UUID, filter_name: str) -> None:
         """Remove a filter from a space.
