@@ -6,6 +6,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote import utils
 from spacenote.core.core import Service
+from spacenote.core.modules.note.models import NOTE_SYSTEM_FIELDS
 from spacenote.core.modules.space.models import Space
 from spacenote.errors import NotFoundError, ValidationError
 
@@ -111,11 +112,14 @@ class SpaceService(Service):
         return await self.update_space_cache(space_id)
 
     async def update_list_fields(self, space_id: UUID, field_names: list[str]) -> Space:
-        """Update the list_fields for a space."""
+        """Update the list_fields for a space.
+
+        Allows both space-defined fields and system fields (number, created_at, author).
+        """
         space = self.get_space(space_id)
 
         for field_name in field_names:
-            if not space.get_field(field_name):
+            if field_name not in NOTE_SYSTEM_FIELDS and not space.get_field(field_name):
                 raise ValidationError(f"Field '{field_name}' does not exist in space")
 
         await self._collection.update_one({"_id": space_id}, {"$set": {"list_fields": field_names}})

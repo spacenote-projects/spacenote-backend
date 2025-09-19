@@ -7,6 +7,9 @@ from spacenote.core.db import MongoModel
 from spacenote.core.modules.field.models import FieldValueType
 from spacenote.utils import now
 
+# System fields available on all notes that can be used in list_fields and filters
+NOTE_SYSTEM_FIELDS = ["number", "created_at", "author"]
+
 
 class Note(MongoModel):
     """Note with custom fields stored in a space."""

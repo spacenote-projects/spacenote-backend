@@ -4,9 +4,10 @@ from uuid import UUID
 from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
-from spacenote.core.modules.field.models import FieldType
+from spacenote.core.modules.field.models import FieldType, SpaceField
 from spacenote.core.modules.filter.models import Filter, FilterOperator
 from spacenote.core.modules.filter.validators import validate_filter_value
+from spacenote.core.modules.note.models import NOTE_SYSTEM_FIELDS
 from spacenote.errors import ValidationError
 
 
@@ -15,6 +16,16 @@ class FilterService(Service):
 
     def __init__(self, database: AsyncDatabase[dict[str, Any]]) -> None:
         super().__init__(database)
+
+    def _get_system_field_definition(self, field_name: str) -> SpaceField | None:
+        """Get virtual field definition for system fields."""
+        if field_name == "number":
+            return SpaceField(name="number", type=FieldType.INT, required=True)
+        if field_name == "created_at":
+            return SpaceField(name="created_at", type=FieldType.DATETIME, required=True)
+        if field_name == "author":
+            return SpaceField(name="author", type=FieldType.USER, required=True)
+        return None
 
     async def add_filter_to_space(self, space_id: UUID, filter: Filter) -> None:
         """Add a filter to a space with validation.
@@ -37,11 +48,14 @@ class FilterService(Service):
         if not filter.name or not filter.name.replace("_", "").isalnum():
             raise ValidationError(f"Invalid filter name: {filter.name}")
 
-        # Validate all fields in conditions exist in the space
+        # Validate all fields in conditions exist in the space or are system fields
         for condition in filter.conditions:
             field = space.get_field(condition.field)
             if field is None:
-                raise ValidationError(f"Field '{condition.field}' referenced in filter condition does not exist in space")
+                # Check if it's a system field
+                field = self._get_system_field_definition(condition.field)
+                if field is None:
+                    raise ValidationError(f"Field '{condition.field}' referenced in filter condition does not exist in space")
 
             # Validate operator is compatible with field type
             self._validate_operator_for_field_type(field.type, condition.operator, condition.field)
@@ -49,16 +63,16 @@ class FilterService(Service):
             # Validate the value is compatible with the field type and operator
             validate_filter_value(field, condition.operator, condition.value)
 
-        # Validate all fields in list_fields exist in the space
+        # Validate all fields in list_fields exist in the space or are system fields
         for field_name in filter.list_fields:
-            if space.get_field(field_name) is None:
+            if field_name not in NOTE_SYSTEM_FIELDS and space.get_field(field_name) is None:
                 raise ValidationError(f"Field '{field_name}' in list_fields does not exist in space")
 
-        # Validate all fields in sort exist in the space
+        # Validate all fields in sort exist in the space or are system fields
         for sort_field in filter.sort:
             # Remove '-' prefix if present for descending sort
             field_name = sort_field.lstrip("-")
-            if space.get_field(field_name) is None:
+            if field_name not in NOTE_SYSTEM_FIELDS and space.get_field(field_name) is None:
                 raise ValidationError(f"Field '{field_name}' in sort does not exist in space")
 
         # Add filter to space
