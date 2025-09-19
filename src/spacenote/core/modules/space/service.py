@@ -110,6 +110,28 @@ class SpaceService(Service):
 
         return await self.update_space_cache(space_id)
 
+    async def update_list_fields(self, space_id: UUID, field_names: list[str]) -> Space:
+        """Update the list_fields for a space."""
+        space = self.get_space(space_id)
+
+        for field_name in field_names:
+            if not space.get_field(field_name):
+                raise ValidationError(f"Field '{field_name}' does not exist in space")
+
+        await self._collection.update_one({"_id": space_id}, {"$set": {"list_fields": field_names}})
+        return await self.update_space_cache(space_id)
+
+    async def update_hidden_create_fields(self, space_id: UUID, field_names: list[str]) -> Space:
+        """Update the hidden_create_fields for a space."""
+        space = self.get_space(space_id)
+
+        for field_name in field_names:
+            if not space.get_field(field_name):
+                raise ValidationError(f"Field '{field_name}' does not exist in space")
+
+        await self._collection.update_one({"_id": space_id}, {"$set": {"hidden_create_fields": field_names}})
+        return await self.update_space_cache(space_id)
+
     async def delete_space(self, space_id: UUID) -> None:
         """Delete a space and remove from cache."""
         result = await self._collection.delete_one({"_id": space_id})

@@ -136,6 +136,58 @@ async def update_space_template(space_slug: str, req: UpdateSpaceTemplateRequest
     return await app.update_space_template(auth_token, space_slug, req.name, req.content)
 
 
+class UpdateListFieldsRequest(BaseModel):
+    """Request to update list_fields for a space."""
+
+    field_names: list[str] = Field(..., description="List of field names to show in list view")
+
+    model_config = {"json_schema_extra": {"examples": [{"field_names": ["title", "status", "priority", "created_at"]}]}}
+
+
+@router.patch(
+    "/spaces/{space_slug}/list-fields",
+    summary="Update list fields",
+    description="Update the fields shown in list view for a space. Only space members can update list fields.",
+    operation_id="updateSpaceListFields",
+    responses={
+        200: {"description": "List fields updated successfully"},
+        400: {"model": ErrorResponse, "description": "Invalid field names"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Not a member of this space"},
+        404: {"model": ErrorResponse, "description": "Space not found"},
+    },
+)
+async def update_space_list_fields(space_slug: str, req: UpdateListFieldsRequest, app: AppDep, auth_token: AuthTokenDep) -> Space:
+    return await app.update_space_list_fields(auth_token, space_slug, req.field_names)
+
+
+class UpdateHiddenCreateFieldsRequest(BaseModel):
+    """Request to update hidden_create_fields for a space."""
+
+    field_names: list[str] = Field(..., description="List of field names to hide in create form")
+
+    model_config = {"json_schema_extra": {"examples": [{"field_names": ["internal_id", "created_by", "created_at"]}]}}
+
+
+@router.patch(
+    "/spaces/{space_slug}/hidden-create-fields",
+    summary="Update hidden create fields",
+    description="Update the fields hidden in create form for a space. Only space members can update hidden create fields.",
+    operation_id="updateSpaceHiddenCreateFields",
+    responses={
+        200: {"description": "Hidden create fields updated successfully"},
+        400: {"model": ErrorResponse, "description": "Invalid field names"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Not a member of this space"},
+        404: {"model": ErrorResponse, "description": "Space not found"},
+    },
+)
+async def update_space_hidden_create_fields(
+    space_slug: str, req: UpdateHiddenCreateFieldsRequest, app: AppDep, auth_token: AuthTokenDep
+) -> Space:
+    return await app.update_space_hidden_create_fields(auth_token, space_slug, req.field_names)
+
+
 @router.delete(
     "/spaces/{space_slug}",
     summary="Delete space",

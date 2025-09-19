@@ -140,6 +140,18 @@ class App:
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         return await self._core.services.space.update_template(space.id, template_name, template_content)
 
+    async def update_space_list_fields(self, auth_token: AuthToken, space_slug: str, field_names: list[str]) -> Space:
+        """Update the list_fields for a space (members only)."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.space.update_list_fields(space.id, field_names)
+
+    async def update_space_hidden_create_fields(self, auth_token: AuthToken, space_slug: str, field_names: list[str]) -> Space:
+        """Update the hidden_create_fields for a space (members only)."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.space.update_hidden_create_fields(space.id, field_names)
+
     async def delete_space(self, auth_token: AuthToken, space_slug: str) -> None:
         """Delete a space and all its data (admin only)."""
         await self._core.services.access.ensure_admin(auth_token)
