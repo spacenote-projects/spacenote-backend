@@ -13,28 +13,12 @@ class FilterService(Service):
     def __init__(self, database: AsyncDatabase[dict[str, Any]]) -> None:
         super().__init__(database)
 
-    def validate_filter_definition(self, space_id: UUID, filter: Filter) -> Filter:
-        """Validate filter definition.
-
-        Args:
-            space_id: The space ID for this validation
-            filter: The filter definition to validate
-
-        Returns:
-            A validated Filter.
-
-        Raises:
-            ValidationError: If filter is invalid
-            NotFoundError: If space not found
-        """
-        raise NotImplementedError
-
     async def add_filter_to_space(self, space_id: UUID, filter: Filter) -> None:
         """Add a filter to a space with validation.
 
         Args:
             space_id: The space to add the filter to
-            filter: The filter definition to add
+            filter: Filter definition to validate, normalize, and add to the space
 
         Raises:
             ValidationError: If filter already exists or is invalid

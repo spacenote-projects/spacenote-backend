@@ -15,22 +15,6 @@ class FieldService(Service):
     def __init__(self, database: AsyncDatabase[dict[str, Any]]) -> None:
         super().__init__(database)
 
-    def validate_field_definition(self, space_id: UUID, field: SpaceField) -> SpaceField:
-        """Validate field definition.
-
-        Args:
-            space_id: The space ID for this validation
-            field: The field definition to validate
-
-        Returns:
-            A validated SpaceField.
-        """
-        space = self.core.services.space.get_space(space_id)
-        members = [self.core.services.user.get_user(uid) for uid in space.members]
-
-        validator = create_validator(field.type, space, members, current_user_id=None)
-        return validator.validate_field_definition(field)
-
     def _parse_field_value(
         self, field: SpaceField, raw_value: str | None, space_id: UUID, current_user_id: UUID | None = None
     ) -> FieldValueType:
@@ -89,7 +73,7 @@ class FieldService(Service):
 
         Args:
             space_id: The space to add the field to
-            field: The field definition to add
+            field: Field definition to validate, normalize, and add to the space
 
         Raises:
             ValidationError: If field already exists or is invalid
@@ -99,7 +83,10 @@ class FieldService(Service):
         if space.get_field(field.name) is not None:
             raise ValidationError(f"Field '{field.name}' already exists in space")
 
-        validated_field = self.validate_field_definition(space_id, field)
+        members = [self.core.services.user.get_user(uid) for uid in space.members]
+        validator = create_validator(field.type, space, members, current_user_id=None)
+        validated_field = validator.validate_field_definition(field)
+
         spaces_collection = self.database["spaces"]
         await spaces_collection.update_one({"_id": space_id}, {"$push": {"fields": validated_field.model_dump()}})
         await self.core.services.space.update_space_cache(space_id)
