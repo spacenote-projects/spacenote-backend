@@ -29,18 +29,51 @@ class NoteService(Service):
         await self._collection.create_index([("activity_at", -1)])
         await self._collection.create_index([("commented_at", -1)])
 
-    async def list_notes(self, space_id: UUID, limit: int = 50, offset: int = 0) -> PaginationResult[Note]:
-        """Get paginated notes in space, sorted by number descending."""
-        query = {"space_id": space_id}
+    async def list_notes(
+        self, space_id: UUID, limit: int = 50, offset: int = 0, filter_name: str | None = None
+    ) -> PaginationResult[Note]:
+        """Get paginated notes in space, optionally filtered.
+
+        Args:
+            space_id: The space ID to list notes from
+            limit: Maximum number of notes to return
+            offset: Number of notes to skip
+            filter_name: Optional filter name to apply
+
+        Returns:
+            Paginated list of notes
+        """
+        if filter_name:
+            # Use filter to build query and sort
+            query = self.core.services.filter.build_mongo_query(space_id, filter_name)
+            sort_spec = self.core.services.filter.build_mongo_sort(space_id, filter_name)
+        else:
+            # Default behavior - all notes sorted by number descending
+            query = {"space_id": space_id}
+            sort_spec = [("number", -1)]
 
         # Get total count
         total = await self._collection.count_documents(query)
 
-        # Get paginated items
-        cursor = self._collection.find(query).sort("number", -1).skip(offset).limit(limit)
+        # Get paginated items with dynamic sorting
+        cursor = self._collection.find(query)
+        for field, direction in sort_spec:
+            cursor = cursor.sort(field, direction)
+        cursor = cursor.skip(offset).limit(limit)
+
         docs = await cursor.to_list()
         items = [Note.model_validate(doc) for doc in docs]
 
+        logger.debug(
+            "list_notes",
+            space_id=space_id,
+            query=query,
+            sort=sort_spec,
+            total=total,
+            limit=limit,
+            offset=offset,
+            returned=len(items),
+        )
         return PaginationResult(
             items=items,
             total=total,
