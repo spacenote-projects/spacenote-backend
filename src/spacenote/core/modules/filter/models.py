@@ -4,7 +4,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
-from spacenote.core.modules.field.models import FieldValueType
+from spacenote.core.modules.field.models import FieldType, FieldValueType
 
 
 class FilterOperator(StrEnum):
@@ -51,3 +51,81 @@ class Filter(BaseModel):
         description="Sort order - field names with optional '-' prefix for descending",
     )
     list_fields: list[str] = Field(default_factory=list, description="Fields to display in list view when this filter is active")
+
+
+# Mapping of field types to their valid filter operators.
+# This defines which operators can be used with each field type for filtering.
+FIELD_TYPE_OPERATORS: dict[FieldType, set[FilterOperator]] = {
+    FieldType.STRING: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+        FilterOperator.CONTAINS,
+        FilterOperator.STARTSWITH,
+        FilterOperator.ENDSWITH,
+    },
+    FieldType.MARKDOWN: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+        FilterOperator.CONTAINS,
+        FilterOperator.STARTSWITH,
+        FilterOperator.ENDSWITH,
+    },
+    FieldType.BOOLEAN: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+    },
+    FieldType.INT: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+        FilterOperator.GT,
+        FilterOperator.GTE,
+        FilterOperator.LT,
+        FilterOperator.LTE,
+    },
+    FieldType.FLOAT: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+        FilterOperator.GT,
+        FilterOperator.GTE,
+        FilterOperator.LT,
+        FilterOperator.LTE,
+    },
+    FieldType.DATETIME: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+        FilterOperator.GT,
+        FilterOperator.GTE,
+        FilterOperator.LT,
+        FilterOperator.LTE,
+    },
+    FieldType.STRING_CHOICE: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+        FilterOperator.IN,
+        FilterOperator.NIN,
+    },
+    FieldType.TAGS: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+        FilterOperator.IN,
+        FilterOperator.NIN,
+        FilterOperator.ALL,
+    },
+    FieldType.USER: {
+        FilterOperator.EQ,
+        FilterOperator.NE,
+    },
+}
+
+
+def get_operators_for_field_type(field_type: FieldType) -> list[FilterOperator]:
+    """Get the list of valid operators for a given field type.
+
+    Args:
+        field_type: The field type to get operators for
+
+    Returns:
+        List of valid operators for the field type, sorted alphabetically
+    """
+    operators = FIELD_TYPE_OPERATORS.get(field_type, set())
+    return sorted(operators, key=lambda x: x.value)
