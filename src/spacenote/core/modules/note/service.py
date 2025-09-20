@@ -1,6 +1,7 @@
 from typing import Any
 from uuid import UUID
 
+import structlog
 from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
@@ -9,6 +10,8 @@ from spacenote.core.modules.note.models import Note
 from spacenote.core.pagination import PaginationResult
 from spacenote.errors import NotFoundError
 from spacenote.utils import now
+
+logger = structlog.get_logger(__name__)
 
 
 class NoteService(Service):
@@ -94,6 +97,7 @@ class NoteService(Service):
         Returns:
             The updated note with all fields
         """
+        logger.debug("update_note_fields", note_id=note_id, raw_fields=raw_fields, current_user_id=current_user_id)
         note = await self.get_note(note_id)
         parsed_fields = self.core.services.field.parse_raw_fields(note.space_id, raw_fields, current_user_id, partial=True)
 
