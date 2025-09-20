@@ -93,6 +93,15 @@ class App:
         current_user = await self._core.services.access.ensure_authenticated(auth_token)
         return await self._core.services.note.create_note(space.id, current_user.id, raw_fields)
 
+    async def update_note_fields(
+        self, auth_token: AuthToken, space_slug: str, note_number: int, raw_fields: dict[str, str]
+    ) -> Note:
+        """Update specific note fields (partial update, members only)."""
+        space, note = await self._resolve_note(space_slug, note_number)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        current_user = await self._core.services.access.ensure_authenticated(auth_token)
+        return await self._core.services.note.update_note_fields(note.id, raw_fields, current_user.id)
+
     async def get_note_comments(
         self, auth_token: AuthToken, space_slug: str, note_number: int, limit: int = 50, offset: int = 0
     ) -> PaginationResult[Comment]:

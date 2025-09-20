@@ -39,7 +39,7 @@ class FieldService(Service):
         return validator.parse_value(field, raw_value)
 
     def parse_raw_fields(
-        self, space_id: UUID, raw_fields: dict[str, str], current_user_id: UUID | None = None
+        self, space_id: UUID, raw_fields: dict[str, str], current_user_id: UUID | None = None, partial: bool = False
     ) -> dict[str, FieldValueType]:
         """Parse raw string fields into typed values based on space field definitions.
 
@@ -47,12 +47,13 @@ class FieldService(Service):
             space_id: The space ID for this validation
             raw_fields: Raw string values from the client
             current_user_id: The ID of the current logged-in user (optional)
+            partial: If True, only validate provided fields (for updates). If False, validate all fields (for creation)
 
         Returns:
             Dictionary of parsed field values
 
         Raises:
-            ValidationError: If required fields are missing or values are invalid
+            ValidationError: If required fields are missing (when partial=False) or values are invalid
         """
         space = self.core.services.space.get_space(space_id)
         parsed_fields: dict[str, FieldValueType] = {}
@@ -62,9 +63,16 @@ class FieldService(Service):
             if space.get_field(field_name) is None:
                 raise ValidationError(f"Unknown field: {field_name}")
 
-        # Parse each field (provided and missing)
-        for field in space.fields:
-            parsed_fields[field.name] = self._parse_field_value(field, raw_fields.get(field.name), space_id, current_user_id)
+        if partial:
+            # For updates: only parse provided fields
+            for field_name, raw_value in raw_fields.items():
+                field = space.get_field(field_name)
+                if field is not None:
+                    parsed_fields[field.name] = self._parse_field_value(field, raw_value, space_id, current_user_id)
+        else:
+            # For creation: parse all fields (provided and missing)
+            for field in space.fields:
+                parsed_fields[field.name] = self._parse_field_value(field, raw_fields.get(field.name), space_id, current_user_id)
 
         return parsed_fields
 

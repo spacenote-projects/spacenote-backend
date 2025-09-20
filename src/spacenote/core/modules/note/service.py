@@ -8,6 +8,7 @@ from spacenote.core.modules.counter.models import CounterType
 from spacenote.core.modules.note.models import Note
 from spacenote.core.pagination import PaginationResult
 from spacenote.errors import NotFoundError
+from spacenote.utils import now
 
 
 class NoteService(Service):
@@ -73,6 +74,32 @@ class NoteService(Service):
             ).to_mongo()
         )
         return await self.get_note(res.inserted_id)
+
+    async def update_note_fields(self, note_id: UUID, raw_fields: dict[str, str], current_user_id: UUID | None = None) -> Note:
+        """Update specific note fields with validation (partial update).
+
+        Only the fields provided in raw_fields are updated. All other existing
+        fields remain unchanged. This is efficient for large field sets.
+
+        Args:
+            note_id: The ID of the note to update
+            raw_fields: Dictionary of field names to new values (partial update)
+            current_user_id: The current user ID for field validation context
+
+        Returns:
+            The updated note with all fields
+        """
+        note = await self.get_note(note_id)
+        parsed_fields = self.core.services.field.parse_raw_fields(note.space_id, raw_fields, current_user_id, partial=True)
+
+        # Build update document with only the specific fields to update
+        update_doc: dict[str, Any] = {"edited_at": now()}
+        for field_name, field_value in parsed_fields.items():
+            update_doc[f"fields.{field_name}"] = field_value
+
+        await self._collection.update_one({"_id": note_id}, {"$set": update_doc})
+
+        return await self.get_note(note_id)
 
     async def delete_notes_by_space(self, space_id: UUID) -> int:
         """Delete all notes in a space and return count of deleted notes."""

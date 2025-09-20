@@ -35,6 +35,28 @@ class CreateNoteRequest(BaseModel):
     }
 
 
+class UpdateNoteFieldsRequest(BaseModel):
+    """Request to update note fields (partial update)."""
+
+    raw_fields: dict[str, str] = Field(
+        ...,
+        description="Field values to update as raw strings. Only provided fields will be updated (partial update).",
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "raw_fields": {
+                        "title": "Updated title",
+                        "status": "completed",
+                    }
+                }
+            ]
+        }
+    }
+
+
 @router.get(
     "/spaces/{space_slug}/notes",
     summary="List space notes",
@@ -89,3 +111,25 @@ async def get_note_by_number(space_slug: str, number: int, app: AppDep, auth_tok
 )
 async def create_note(space_slug: str, request: CreateNoteRequest, app: AppDep, auth_token: AuthTokenDep) -> Note:
     return await app.create_note(auth_token, space_slug, request.raw_fields)
+
+
+@router.patch(
+    "/spaces/{space_slug}/notes/{number}",
+    summary="Update note fields",
+    description=(
+        "Partially update fields of an existing note. Only the fields provided will be updated, "
+        "all other fields remain unchanged. Only space members can update notes."
+    ),
+    operation_id="updateNoteFields",
+    responses={
+        200: {"description": "Note updated successfully"},
+        400: {"model": ErrorResponse, "description": "Invalid field data or validation failed"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Not a member of this space"},
+        404: {"model": ErrorResponse, "description": "Space or note not found"},
+    },
+)
+async def update_note_fields(
+    space_slug: str, number: int, request: UpdateNoteFieldsRequest, app: AppDep, auth_token: AuthTokenDep
+) -> Note:
+    return await app.update_note_fields(auth_token, space_slug, number, request.raw_fields)
