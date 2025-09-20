@@ -73,12 +73,12 @@ class App:
         return self._resolve_space(space_slug)
 
     async def get_notes_by_space(
-        self, auth_token: AuthToken, space_slug: str, limit: int = 50, offset: int = 0
+        self, auth_token: AuthToken, space_slug: str, limit: int = 50, offset: int = 0, filter_name: str | None = None
     ) -> PaginationResult[Note]:
-        """Get paginated notes in space (members only)."""
+        """Get paginated notes in space (members only), optionally filtered."""
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
-        return await self._core.services.note.list_notes(space.id, limit, offset)
+        return await self._core.services.note.list_notes(space.id, limit, offset, filter_name)
 
     async def get_note_by_number(self, auth_token: AuthToken, space_slug: str, number: int) -> Note:
         """Get specific note by number (members only)."""

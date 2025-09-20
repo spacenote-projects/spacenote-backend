@@ -5,7 +5,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
 from spacenote.core.modules.field.models import FieldType, SpaceField
-from spacenote.core.modules.filter.models import FIELD_TYPE_OPERATORS, Filter
+from spacenote.core.modules.filter.models import FIELD_TYPE_OPERATORS, Filter, FilterOperator
 from spacenote.core.modules.filter.validators import validate_filter_value
 from spacenote.core.modules.note.models import NOTE_SYSTEM_FIELDS
 from spacenote.errors import NotFoundError, ValidationError
@@ -106,3 +106,142 @@ class FilterService(Service):
         spaces_collection = self.database["spaces"]
         await spaces_collection.update_one({"_id": space_id}, {"$pull": {"filters": {"name": filter_name}}})
         await self.core.services.space.update_space_cache(space_id)
+
+    def build_mongo_query(self, space_id: UUID, filter_name: str) -> dict[str, Any]:
+        """Build MongoDB query document from a filter.
+
+        Args:
+            space_id: The space ID containing the filter
+            filter_name: The name of the filter to use
+
+        Returns:
+            MongoDB query document with filter conditions
+
+        Raises:
+            NotFoundError: If space or filter not found
+        """
+        space = self.core.services.space.get_space(space_id)
+        filter_def = space.get_filter(filter_name)
+        if filter_def is None:
+            raise NotFoundError(f"Filter '{filter_name}' not found in space")
+
+        # Build the base query with space_id
+        query: dict[str, Any] = {"space_id": space_id}
+
+        # Add filter conditions
+        for condition in filter_def.conditions:
+            field_path = self._get_field_path(condition.field)
+            mongo_operator = self._build_condition_query(condition.operator, condition.value)
+
+            # Handle multiple conditions on the same field
+            if field_path in query:
+                # Combine with $and if there are multiple conditions on the same field
+                if "$and" not in query:
+                    existing_condition = {field_path: query.pop(field_path)}
+                    query["$and"] = [existing_condition]
+                query["$and"].append({field_path: mongo_operator})
+            else:
+                query[field_path] = mongo_operator
+
+        return query
+
+    def build_mongo_sort(self, space_id: UUID, filter_name: str) -> list[tuple[str, int]]:
+        """Build MongoDB sort specification from a filter.
+
+        Args:
+            space_id: The space ID containing the filter
+            filter_name: The name of the filter to use
+
+        Returns:
+            List of (field, direction) tuples for sorting
+
+        Raises:
+            NotFoundError: If space or filter not found
+        """
+        space = self.core.services.space.get_space(space_id)
+        filter_def = space.get_filter(filter_name)
+        if filter_def is None:
+            raise NotFoundError(f"Filter '{filter_name}' not found in space")
+
+        # Build sort specification
+        if not filter_def.sort:
+            # Default sort by number descending
+            return [("number", -1)]
+
+        sort_spec = []
+        for field in filter_def.sort:
+            if field.startswith("-"):
+                # Descending sort
+                field_name = field[1:]
+                direction = -1
+            else:
+                # Ascending sort
+                field_name = field
+                direction = 1
+
+            field_path = self._get_field_path(field_name)
+            sort_spec.append((field_path, direction))
+
+        return sort_spec
+
+    def _get_field_path(self, field_name: str) -> str:
+        """Get the MongoDB field path for a field name.
+
+        System fields are used directly, custom fields are prefixed with 'fields.'
+        """
+        if field_name in NOTE_SYSTEM_FIELDS:
+            # Special case for author field
+            if field_name == "author":
+                return "author_id"
+            return field_name
+        return f"fields.{field_name}"
+
+    def _build_condition_query(self, operator: FilterOperator, value: Any) -> Any:  # noqa: ANN401
+        """Build MongoDB query for a single condition.
+
+        Args:
+            operator: The filter operator
+            value: The filter value
+
+        Returns:
+            MongoDB query value or operator document
+        """
+        # Handle null values
+        if value is None:
+            if operator == FilterOperator.EQ:
+                return None
+            if operator == FilterOperator.NE:
+                return {"$ne": None}
+            # This shouldn't happen due to validation, but handle it
+            return None
+
+        # Map operators to MongoDB
+        if operator == FilterOperator.EQ:
+            return value
+        if operator == FilterOperator.NE:
+            return {"$ne": value}
+        if operator == FilterOperator.GT:
+            return {"$gt": value}
+        if operator == FilterOperator.GTE:
+            return {"$gte": value}
+        if operator == FilterOperator.LT:
+            return {"$lt": value}
+        if operator == FilterOperator.LTE:
+            return {"$lte": value}
+        if operator == FilterOperator.IN:
+            return {"$in": value}
+        if operator == FilterOperator.NIN:
+            return {"$nin": value}
+        if operator == FilterOperator.ALL:
+            return {"$all": value}
+        if operator == FilterOperator.CONTAINS:
+            # Case-insensitive regex search
+            return {"$regex": value, "$options": "i"}
+        if operator == FilterOperator.STARTSWITH:
+            # Anchor at start with case-insensitive
+            return {"$regex": f"^{value}", "$options": "i"}
+        if operator == FilterOperator.ENDSWITH:
+            # Anchor at end with case-insensitive
+            return {"$regex": f"{value}$", "$options": "i"}
+        # Shouldn't happen, but default to equality
+        return value
