@@ -8,7 +8,7 @@ from spacenote.core.modules.field.models import FieldType, SpaceField
 from spacenote.core.modules.filter.models import FIELD_TYPE_OPERATORS, Filter
 from spacenote.core.modules.filter.validators import validate_filter_value
 from spacenote.core.modules.note.models import NOTE_SYSTEM_FIELDS
-from spacenote.errors import ValidationError
+from spacenote.errors import NotFoundError, ValidationError
 
 
 class FilterService(Service):
@@ -96,4 +96,13 @@ class FilterService(Service):
         Raises:
             NotFoundError: If space or filter not found
         """
-        raise NotImplementedError
+        space = self.core.services.space.get_space(space_id)
+
+        # Check if filter exists
+        if space.get_filter(filter_name) is None:
+            raise NotFoundError(f"Filter '{filter_name}' not found in space")
+
+        # Remove filter from space
+        spaces_collection = self.database["spaces"]
+        await spaces_collection.update_one({"_id": space_id}, {"$pull": {"filters": {"name": filter_name}}})
+        await self.core.services.space.update_space_cache(space_id)
