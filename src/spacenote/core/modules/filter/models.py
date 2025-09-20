@@ -2,7 +2,7 @@
 
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from spacenote.core.modules.field.models import FieldType, FieldValueType
 
@@ -41,6 +41,9 @@ class FilterCondition(BaseModel):
 
 class Filter(BaseModel):
     """Saved filter configuration for a space."""
+
+    # Force unified schema for both input/output in OpenAPI to avoid Filter-Input/Output duplication
+    model_config = ConfigDict(json_schema_mode_override="validation")
 
     name: str = Field(..., description="Unique filter identifier within the space")
     title: str = Field(..., description="Display name for the filter")
