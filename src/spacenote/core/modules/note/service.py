@@ -23,6 +23,8 @@ class NoteService(Service):
         await self._collection.create_index([("space_id", 1), ("number", 1)], unique=True)
         await self._collection.create_index([("space_id", 1)])
         await self._collection.create_index([("created_at", -1)])
+        await self._collection.create_index([("activity_at", -1)])
+        await self._collection.create_index([("commented_at", -1)])
 
     async def list_notes(self, space_id: UUID, limit: int = 50, offset: int = 0) -> PaginationResult[Note]:
         """Get paginated notes in space, sorted by number descending."""
@@ -65,11 +67,14 @@ class NoteService(Service):
 
         parsed_fields = self.core.services.field.parse_raw_fields(space_id, raw_fields, current_user_id=author_id)
         next_number = await self.core.services.counter.get_next_sequence(space_id, CounterType.NOTE)
+        timestamp = now()
         res = await self._collection.insert_one(
             Note(
                 space_id=space_id,
                 number=next_number,
                 author_id=author_id,
+                created_at=timestamp,
+                activity_at=timestamp,
                 fields=parsed_fields,
             ).to_mongo()
         )
@@ -93,7 +98,8 @@ class NoteService(Service):
         parsed_fields = self.core.services.field.parse_raw_fields(note.space_id, raw_fields, current_user_id, partial=True)
 
         # Build update document with only the specific fields to update
-        update_doc: dict[str, Any] = {"edited_at": now()}
+        timestamp = now()
+        update_doc: dict[str, Any] = {"edited_at": timestamp, "activity_at": timestamp}
         for field_name, field_value in parsed_fields.items():
             update_doc[f"fields.{field_name}"] = field_value
 

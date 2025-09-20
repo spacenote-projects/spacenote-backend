@@ -6,6 +6,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 from spacenote.core.core import Service
 from spacenote.core.modules.comment.models import Comment
 from spacenote.core.pagination import PaginationResult
+from spacenote.utils import now
 
 
 class CommentService(Service):
@@ -34,6 +35,12 @@ class CommentService(Service):
             content=content,
         )
         await self._collection.insert_one(comment.to_mongo())
+
+        # Update note's commented_at and activity_at timestamps
+        timestamp = now()
+        notes_collection = self.database.get_collection("notes")
+        await notes_collection.update_one({"_id": note_id}, {"$set": {"commented_at": timestamp, "activity_at": timestamp}})
+
         return comment
 
     async def get_note_comments(self, note_id: UUID, limit: int = 50, offset: int = 0) -> PaginationResult[Comment]:

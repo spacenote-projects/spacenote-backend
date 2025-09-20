@@ -8,7 +8,7 @@ from spacenote.core.modules.field.models import FieldValueType
 from spacenote.utils import now
 
 # System fields available on all notes that can be used in list_fields and filters
-NOTE_SYSTEM_FIELDS = ["number", "created_at", "author"]
+NOTE_SYSTEM_FIELDS = ["number", "created_at", "edited_at", "commented_at", "activity_at", "author"]
 
 
 class Note(MongoModel):
@@ -19,4 +19,6 @@ class Note(MongoModel):
     author_id: UUID
     created_at: datetime = Field(default_factory=now)
     edited_at: datetime | None = None  # Last field edit timestamp
+    commented_at: datetime | None = None  # Last comment timestamp
+    activity_at: datetime = Field(default_factory=now)  # Any activity (field edit or comment)
     fields: dict[str, FieldValueType]  # Values for space-defined fields
