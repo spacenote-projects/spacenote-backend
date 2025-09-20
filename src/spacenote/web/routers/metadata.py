@@ -1,24 +1,9 @@
 """Metadata endpoints for exposing system information."""
 
 from fastapi import APIRouter
-from pydantic import BaseModel, Field
 
 from spacenote.core.modules.field.models import FieldType
-from spacenote.core.modules.filter.models import FilterOperator, get_operators_for_field_type
-
-
-class FieldTypeOperators(BaseModel):
-    """Mapping of field type to available filter operators."""
-
-    field_type: FieldType = Field(..., description="The field type")
-    operators: list[FilterOperator] = Field(..., description="List of valid operators for this field type")
-
-
-class FieldOperatorsResponse(BaseModel):
-    """Response containing all field type operator mappings."""
-
-    field_operators: list[FieldTypeOperators] = Field(..., description="List of field types and their valid operators")
-
+from spacenote.core.modules.filter.models import FIELD_TYPE_OPERATORS, FilterOperator
 
 router = APIRouter(tags=["metadata"])
 
@@ -32,9 +17,6 @@ router = APIRouter(tags=["metadata"])
     ),
     operation_id="getFieldOperators",
 )
-async def get_field_operators() -> FieldOperatorsResponse:
+async def get_field_operators() -> dict[FieldType, list[FilterOperator]]:
     """Get valid operators for each field type."""
-    field_operators = [
-        FieldTypeOperators(field_type=field_type, operators=get_operators_for_field_type(field_type)) for field_type in FieldType
-    ]
-    return FieldOperatorsResponse(field_operators=field_operators)
+    return {field_type: list(operators) for field_type, operators in FIELD_TYPE_OPERATORS.items()}
