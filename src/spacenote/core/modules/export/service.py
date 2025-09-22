@@ -9,7 +9,7 @@ import structlog
 from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
-from spacenote.core.modules.export.models import ExportData, ExportSpace
+from spacenote.core.modules.export.models import ExportComment, ExportData, ExportNote, ExportSpace
 from spacenote.core.modules.space.models import Space
 from spacenote.errors import NotFoundError, ValidationError
 from spacenote.utils import now
@@ -31,8 +31,13 @@ class ExportService(Service):
     def __init__(self, database: AsyncDatabase[dict[str, Any]]) -> None:
         super().__init__(database)
 
-    async def export_space(self, space_slug: str) -> ExportData:
-        """Export a space with all its configuration."""
+    async def export_space(self, space_slug: str, include_data: bool = False) -> ExportData:
+        """Export a space with all its configuration and optionally data.
+
+        Args:
+            space_slug: The slug of the space to export
+            include_data: If True, include all notes and comments
+        """
         space = self.core.services.space.get_space_by_slug(space_slug)
 
         member_usernames = []
@@ -52,8 +57,66 @@ class ExportService(Service):
             templates=space.templates,
         )
 
+        export_notes = None
+        export_comments = None
+
+        if include_data:
+            # Get all notes for the space (no pagination)
+            all_notes = await self.core.services.note.list_notes(space.id, limit=10000, offset=0)
+            export_notes = []
+
+            for note in all_notes.items:
+                # Get username for note creator
+                note_user = self.core.services.user.get_user(note.user_id)
+                export_note = ExportNote(
+                    number=note.number,
+                    username=note_user.username,
+                    created_at=note.created_at,
+                    edited_at=note.edited_at,
+                    commented_at=note.commented_at,
+                    activity_at=note.activity_at,
+                    fields=note.fields,
+                )
+                export_notes.append(export_note)
+
+            # Get all comments for the space
+            all_comments = await self.core.services.comment.get_space_comments(space.id)
+            export_comments = []
+
+            # Build note_id to number mapping for comments
+            note_id_to_number = {note.id: note.number for note in all_notes.items}
+
+            for comment in all_comments:
+                # Get username for comment author
+                comment_user = self.core.services.user.get_user(comment.user_id)
+                # Get note number from note_id
+                note_number = note_id_to_number.get(comment.note_id)
+                if note_number is None:
+                    # Skip orphaned comments
+                    logger.warning("export_skip_orphan_comment", comment_id=comment.id, note_id=comment.note_id)
+                    continue
+
+                export_comment = ExportComment(
+                    note_number=note_number,
+                    number=comment.number,
+                    username=comment_user.username,
+                    content=comment.content,
+                    created_at=comment.created_at,
+                    edited_at=comment.edited_at,
+                )
+                export_comments.append(export_comment)
+
+            logger.info(
+                "export_with_data",
+                space_slug=space_slug,
+                note_count=len(export_notes),
+                comment_count=len(export_comments),
+            )
+
         return ExportData(
             space=export_space,
+            notes=export_notes,
+            comments=export_comments,
             exported_at=now(),
             spacenote_version=SPACENOTE_VERSION,
         )

@@ -15,7 +15,8 @@ router = APIRouter(tags=["export"])
 @router.get(
     "/spaces/{space_slug}/export",
     summary="Export space configuration",
-    description="Export a space configuration as portable JSON. Only space members can export.",
+    description="Export a space configuration as portable JSON. Only space members can export. "
+    "Optionally include all notes and comments data.",
     operation_id="exportSpace",
     responses={
         200: {"description": "Space exported successfully"},
@@ -28,8 +29,9 @@ async def export_space(
     space_slug: str,
     app: AppDep,
     auth_token: AuthTokenDep,
+    include_data: Annotated[bool, Query(description="Include notes and comments data in export")] = False,
 ) -> ExportData:
-    return await app.export_space(auth_token, space_slug)
+    return await app.export_space(auth_token, space_slug, include_data)
 
 
 @router.post(

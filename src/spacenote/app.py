@@ -174,11 +174,17 @@ class App:
         await self._core.services.counter.delete_counters_by_space(space.id)
         await self._core.services.space.delete_space(space.id)
 
-    async def export_space(self, auth_token: AuthToken, space_slug: str) -> ExportData:
-        """Export a space configuration (member only)."""
+    async def export_space(self, auth_token: AuthToken, space_slug: str, include_data: bool = False) -> ExportData:
+        """Export a space configuration (member only).
+
+        Args:
+            auth_token: Authentication token
+            space_slug: Space slug to export
+            include_data: If True, include notes and comments data
+        """
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
-        return await self._core.services.export.export_space(space_slug)
+        return await self._core.services.export.export_space(space_slug, include_data)
 
     async def import_space(
         self, auth_token: AuthToken, export_data: ExportData, new_slug: str | None = None, create_missing_users: bool = False
