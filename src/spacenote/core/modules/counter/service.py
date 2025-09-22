@@ -40,6 +40,14 @@ class CounterService(Service):
             return int(doc["seq"])
         return 0
 
+    async def set_sequence(self, space_id: UUID, counter_type: CounterType, value: int) -> None:
+        """Set the sequence number to a specific value. Used for imports to preserve numbering."""
+        await self._collection.update_one(
+            {"space_id": space_id, "counter_type": counter_type},
+            {"$set": {"seq": value}},
+            upsert=True,
+        )
+
     async def delete_counters_by_space(self, space_id: UUID) -> int:
         """Delete all counters for a space and return count of deleted counters."""
         result = await self._collection.delete_many({"space_id": space_id})

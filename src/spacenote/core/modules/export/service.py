@@ -4,12 +4,16 @@ import secrets
 import string
 from contextlib import suppress
 from typing import Any
+from uuid import UUID
 
 import structlog
 from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
+from spacenote.core.modules.comment.models import Comment
+from spacenote.core.modules.counter.models import CounterType
 from spacenote.core.modules.export.models import ExportComment, ExportData, ExportNote, ExportSpace
+from spacenote.core.modules.note.models import Note
 from spacenote.core.modules.space.models import Space
 from spacenote.errors import NotFoundError, ValidationError
 from spacenote.utils import now
@@ -121,16 +125,62 @@ class ExportService(Service):
             spacenote_version=SPACENOTE_VERSION,
         )
 
-    async def import_space(
+    async def _import_note(self, space_id: UUID, export_note: ExportNote, user_id: UUID) -> Note:
+        """Import a note with preserved number and timestamps.
+
+        Args:
+            space_id: The space to import the note into
+            export_note: The exported note data
+            user_id: The user ID of the note creator
+        """
+        notes_collection = self.database.get_collection("notes")
+        note = Note(
+            space_id=space_id,
+            number=export_note.number,
+            user_id=user_id,
+            created_at=export_note.created_at,
+            edited_at=export_note.edited_at,
+            commented_at=export_note.commented_at,
+            activity_at=export_note.activity_at,
+            fields=export_note.fields,
+        )
+        await notes_collection.insert_one(note.to_mongo())
+        return note
+
+    async def _import_comment(self, space_id: UUID, note_id: UUID, export_comment: ExportComment, user_id: UUID) -> Comment:
+        """Import a comment with preserved number and timestamps.
+
+        Args:
+            space_id: The space ID
+            note_id: The note this comment belongs to
+            export_comment: The exported comment data
+            user_id: The user ID of the comment author
+        """
+        comments_collection = self.database.get_collection("comments")
+        comment = Comment(
+            note_id=note_id,
+            space_id=space_id,
+            user_id=user_id,
+            number=export_comment.number,
+            content=export_comment.content,
+            created_at=export_comment.created_at,
+            edited_at=export_comment.edited_at,
+        )
+        await comments_collection.insert_one(comment.to_mongo())
+        return comment
+
+    async def import_space(  # noqa: PLR0915
         self, export_data: ExportData, new_slug: str | None = None, create_missing_users: bool = False
     ) -> Space:
         """Import a space from export data.
 
-        Currently imports:
+        Imports:
         - Basic space info (slug, title, description)
         - Members (those that exist in the system, or creates them if create_missing_users=True)
         - Fields
         - Templates
+        - Notes (if present in export_data)
+        - Comments (if present in export_data)
 
         TODO: Import list_fields, hidden_create_fields, filters when SpaceService supports updating them.
         """
@@ -184,12 +234,114 @@ class ExportService(Service):
         if export_data.space.templates.note_list:
             await self.core.services.space.update_template(space.id, "note_list", export_data.space.templates.note_list)
 
+        # Import notes if present
+        note_id_map = {}  # Maps note number to note ID for comment import
+        max_note_number = 0
+        username_to_id = {}  # Build username to user_id mapping
+        comments_imported = 0  # Track imported comments
+
+        # Build username to user_id mapping
+        for username in export_data.space.members:
+            try:
+                user = self.core.services.user.get_user_by_username(username)
+                username_to_id[username] = user.id
+            except NotFoundError:
+                if not create_missing_users:
+                    # User was not created, skip their content
+                    continue
+
+        if export_data.notes:
+            logger.info("import_notes_start", space_id=space.id, count=len(export_data.notes))
+
+            for export_note in export_data.notes:
+                # Get user ID for note creator
+                user_id = username_to_id.get(export_note.username)
+                if not user_id:
+                    logger.warning(
+                        "import_skip_note_missing_user",
+                        note_number=export_note.number,
+                        username=export_note.username,
+                        space_slug=slug,
+                    )
+                    continue
+
+                # Import note directly with its fields (already validated during export)
+                try:
+                    imported_note = await self._import_note(space.id, export_note, user_id)
+                    note_id_map[export_note.number] = imported_note.id
+                    max_note_number = max(max_note_number, export_note.number)
+
+                except Exception:
+                    logger.exception(
+                        "import_note_failed",
+                        note_number=export_note.number,
+                        space_slug=slug,
+                    )
+                    continue
+
+            # Update counter to max note number to prevent conflicts
+            if max_note_number > 0:
+                await self.core.services.counter.set_sequence(space.id, CounterType.NOTE, max_note_number)
+
+            logger.info(
+                "import_notes_complete",
+                space_id=space.id,
+                imported=len(note_id_map),
+                max_number=max_note_number,
+            )
+
+        # Import comments if present
+        if export_data.comments:
+            logger.info("import_comments_start", space_id=space.id, count=len(export_data.comments))
+            for export_comment in export_data.comments:
+                # Get note ID from number
+                note_id = note_id_map.get(export_comment.note_number)
+                if not note_id:
+                    logger.warning(
+                        "import_skip_comment_missing_note",
+                        comment_number=export_comment.number,
+                        note_number=export_comment.note_number,
+                        space_slug=slug,
+                    )
+                    continue
+
+                # Get user ID for comment author
+                user_id = username_to_id.get(export_comment.username)
+                if not user_id:
+                    logger.warning(
+                        "import_skip_comment_missing_user",
+                        comment_number=export_comment.number,
+                        username=export_comment.username,
+                        space_slug=slug,
+                    )
+                    continue
+
+                try:
+                    await self._import_comment(space.id, note_id, export_comment, user_id)
+                    comments_imported += 1
+                except Exception:
+                    logger.exception(
+                        "import_comment_failed",
+                        comment_number=export_comment.number,
+                        note_number=export_comment.note_number,
+                        space_slug=slug,
+                    )
+                    continue
+
+            logger.info(
+                "import_comments_complete",
+                space_id=space.id,
+                imported=comments_imported,
+            )
+
         space = self.core.services.space.get_space(space.id)
         logger.info(
             "space_imported",
             slug=slug,
             member_count=len(member_ids),
             field_count=len(export_data.space.fields),
+            note_count=len(note_id_map) if export_data.notes else 0,
+            comment_count=comments_imported if export_data.comments else 0,
         )
 
         return space
