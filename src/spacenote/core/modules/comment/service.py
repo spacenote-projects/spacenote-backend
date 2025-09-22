@@ -22,7 +22,7 @@ class CommentService(Service):
         await self._collection.create_index([("note_id", 1)])
         await self._collection.create_index([("created_at", 1)])
 
-    async def create_comment(self, note_id: UUID, space_id: UUID, author_id: UUID, content: str) -> Comment:
+    async def create_comment(self, note_id: UUID, space_id: UUID, user_id: UUID, content: str) -> Comment:
         """Create comment with auto-increment number per note."""
         last_comment = await self._collection.find_one({"note_id": note_id}, sort=[("number", -1)])
         next_number = 1 if last_comment is None else last_comment["number"] + 1
@@ -30,7 +30,7 @@ class CommentService(Service):
         comment = Comment(
             note_id=note_id,
             space_id=space_id,
-            author_id=author_id,
+            user_id=user_id,
             number=next_number,
             content=content,
         )

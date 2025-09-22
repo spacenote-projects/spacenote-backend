@@ -12,7 +12,7 @@ class Comment(MongoModel):
 
     note_id: UUID
     space_id: UUID
-    author_id: UUID
+    user_id: UUID
     number: int  # Sequential number per note
     content: str
     created_at: datetime = Field(default_factory=now)

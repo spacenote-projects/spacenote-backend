@@ -95,20 +95,20 @@ class NoteService(Service):
             raise NotFoundError(f"Note not found: space_id={space_id}, number={number}")
         return Note.model_validate(doc)
 
-    async def create_note(self, space_id: UUID, author_id: UUID, raw_fields: dict[str, str]) -> Note:
+    async def create_note(self, space_id: UUID, user_id: UUID, raw_fields: dict[str, str]) -> Note:
         """Create note from raw fields."""
         space = self.core.services.space.get_space(space_id)
-        if author_id not in space.members:
-            raise NotFoundError(f"User {author_id} is not a member of space {space_id}")
+        if user_id not in space.members:
+            raise NotFoundError(f"User {user_id} is not a member of space {space_id}")
 
-        parsed_fields = self.core.services.field.parse_raw_fields(space_id, raw_fields, current_user_id=author_id)
+        parsed_fields = self.core.services.field.parse_raw_fields(space_id, raw_fields, current_user_id=user_id)
         next_number = await self.core.services.counter.get_next_sequence(space_id, CounterType.NOTE)
         timestamp = now()
         res = await self._collection.insert_one(
             Note(
                 space_id=space_id,
                 number=next_number,
-                author_id=author_id,
+                user_id=user_id,
                 created_at=timestamp,
                 activity_at=timestamp,
                 fields=parsed_fields,

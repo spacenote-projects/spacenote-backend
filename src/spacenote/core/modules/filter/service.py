@@ -23,8 +23,8 @@ class FilterService(Service):
             return SpaceField(name="number", type=FieldType.INT, required=True)
         if field_name == "created_at":
             return SpaceField(name="created_at", type=FieldType.DATETIME, required=True)
-        if field_name == "author":
-            return SpaceField(name="author", type=FieldType.USER, required=True)
+        if field_name == "user_id":
+            return SpaceField(name="user_id", type=FieldType.USER, required=True)
         return None
 
     async def add_filter_to_space(self, space_id: UUID, filter: Filter) -> None:
@@ -190,9 +190,6 @@ class FilterService(Service):
         System fields are used directly, custom fields are prefixed with 'fields.'
         """
         if field_name in NOTE_SYSTEM_FIELDS:
-            # Special case for author field
-            if field_name == "author":
-                return "author_id"
             return field_name
         return f"fields.{field_name}"
 
