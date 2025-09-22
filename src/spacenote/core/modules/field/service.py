@@ -59,20 +59,20 @@ class FieldService(Service):
         parsed_fields: dict[str, FieldValueType] = {}
 
         # Check for unknown fields first
-        for field_name in raw_fields:
-            if space.get_field(field_name) is None:
-                raise ValidationError(f"Unknown field: {field_name}")
+        for field_id in raw_fields:
+            if space.get_field(field_id) is None:
+                raise ValidationError(f"Unknown field: {field_id}")
 
         if partial:
             # For updates: only parse provided fields
-            for field_name, raw_value in raw_fields.items():
-                field = space.get_field(field_name)
+            for field_id, raw_value in raw_fields.items():
+                field = space.get_field(field_id)
                 if field is not None:
-                    parsed_fields[field.name] = self._parse_field_value(field, raw_value, space_id, current_user_id)
+                    parsed_fields[field.id] = self._parse_field_value(field, raw_value, space_id, current_user_id)
         else:
             # For creation: parse all fields (provided and missing)
             for field in space.fields:
-                parsed_fields[field.name] = self._parse_field_value(field, raw_fields.get(field.name), space_id, current_user_id)
+                parsed_fields[field.id] = self._parse_field_value(field, raw_fields.get(field.id), space_id, current_user_id)
 
         return parsed_fields
 
@@ -88,8 +88,8 @@ class FieldService(Service):
             NotFoundError: If space not found
         """
         space = self.core.services.space.get_space(space_id)
-        if space.get_field(field.name) is not None:
-            raise ValidationError(f"Field '{field.name}' already exists in space")
+        if space.get_field(field.id) is not None:
+            raise ValidationError(f"Field '{field.id}' already exists in space")
 
         members = [self.core.services.user.get_user(uid) for uid in space.members]
         validator = create_validator(field.type, space, members, current_user_id=None)
@@ -99,28 +99,28 @@ class FieldService(Service):
         await spaces_collection.update_one({"_id": space_id}, {"$push": {"fields": validated_field.model_dump()}})
         await self.core.services.space.update_space_cache(space_id)
 
-    async def remove_field_from_space(self, space_id: UUID, field_name: str) -> None:
+    async def remove_field_from_space(self, space_id: UUID, field_id: str) -> None:
         """Remove a field from a space.
 
         Args:
             space_id: The space to remove the field from
-            field_name: The name of the field to remove
+            field_id: The id of the field to remove
 
         Raises:
             ValidationError: If field is in use or doesn't exist
             NotFoundError: If space not found
         """
         space = self.core.services.space.get_space(space_id)
-        field = space.get_field(field_name)
+        field = space.get_field(field_id)
         if field is None:
-            raise NotFoundError(f"Field '{field_name}' not found in space")
+            raise NotFoundError(f"Field '{field_id}' not found in space")
 
         # Check if field is used in any notes
         notes_collection = self.database["notes"]
-        note_count = await notes_collection.count_documents({"space_id": space_id, f"fields.{field_name}": {"$exists": True}})
+        note_count = await notes_collection.count_documents({"space_id": space_id, f"fields.{field_id}": {"$exists": True}})
         if note_count > 0:
-            raise ValidationError(f"Cannot remove field '{field_name}' - it is used in {note_count} note(s)")
+            raise ValidationError(f"Cannot remove field '{field_id}' - it is used in {note_count} note(s)")
 
         spaces_collection = self.database["spaces"]
-        await spaces_collection.update_one({"_id": space_id}, {"$pull": {"fields": {"name": field_name}}})
+        await spaces_collection.update_one({"_id": space_id}, {"$pull": {"fields": {"id": field_id}}})
         await self.core.services.space.update_space_cache(space_id)

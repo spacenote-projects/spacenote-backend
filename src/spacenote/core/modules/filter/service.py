@@ -17,14 +17,14 @@ class FilterService(Service):
     def __init__(self, database: AsyncDatabase[dict[str, Any]]) -> None:
         super().__init__(database)
 
-    def _get_system_field_definition(self, field_name: str) -> SpaceField | None:
+    def _get_system_field_definition(self, field_id: str) -> SpaceField | None:
         """Get virtual field definition for system fields."""
-        if field_name == "number":
-            return SpaceField(name="number", type=FieldType.INT, required=True)
-        if field_name == "created_at":
-            return SpaceField(name="created_at", type=FieldType.DATETIME, required=True)
-        if field_name == "user_id":
-            return SpaceField(name="user_id", type=FieldType.USER, required=True)
+        if field_id == "number":
+            return SpaceField(id="number", type=FieldType.INT, required=True)
+        if field_id == "created_at":
+            return SpaceField(id="created_at", type=FieldType.DATETIME, required=True)
+        if field_id == "user_id":
+            return SpaceField(id="user_id", type=FieldType.USER, required=True)
         return None
 
     async def add_filter_to_space(self, space_id: UUID, filter: Filter) -> None:
@@ -40,13 +40,13 @@ class FilterService(Service):
         """
         space = self.core.services.space.get_space(space_id)
 
-        # Validate filter name is unique
-        if space.get_filter(filter.name) is not None:
-            raise ValidationError(f"Filter '{filter.name}' already exists in space")
+        # Validate filter id is unique
+        if space.get_filter(filter.id) is not None:
+            raise ValidationError(f"Filter '{filter.id}' already exists in space")
 
-        # Validate filter name format (alphanumeric + underscores)
-        if not filter.name or not filter.name.replace("_", "").isalnum():
-            raise ValidationError(f"Invalid filter name: {filter.name}")
+        # Validate filter id format (alphanumeric + underscores)
+        if not filter.id or not filter.id.replace("_", "").isalnum():
+            raise ValidationError(f"Invalid filter id: {filter.id}")
 
         # Validate all fields in conditions exist in the space or are system fields
         for condition in filter.conditions:
@@ -70,28 +70,28 @@ class FilterService(Service):
             validate_filter_value(field, condition.operator, condition.value)
 
         # Validate all fields in list_fields exist in the space or are system fields
-        for field_name in filter.list_fields:
-            if field_name not in NOTE_SYSTEM_FIELDS and space.get_field(field_name) is None:
-                raise ValidationError(f"Field '{field_name}' in list_fields does not exist in space")
+        for field_id in filter.list_fields:
+            if field_id not in NOTE_SYSTEM_FIELDS and space.get_field(field_id) is None:
+                raise ValidationError(f"Field '{field_id}' in list_fields does not exist in space")
 
         # Validate all fields in sort exist in the space or are system fields
         for sort_field in filter.sort:
             # Remove '-' prefix if present for descending sort
-            field_name = sort_field.lstrip("-")
-            if field_name not in NOTE_SYSTEM_FIELDS and space.get_field(field_name) is None:
-                raise ValidationError(f"Field '{field_name}' in sort does not exist in space")
+            field_id = sort_field.lstrip("-")
+            if field_id not in NOTE_SYSTEM_FIELDS and space.get_field(field_id) is None:
+                raise ValidationError(f"Field '{field_id}' in sort does not exist in space")
 
         # Add filter to space
         spaces_collection = self.database["spaces"]
         await spaces_collection.update_one({"_id": space_id}, {"$push": {"filters": filter.model_dump()}})
         await self.core.services.space.update_space_cache(space_id)
 
-    async def remove_filter_from_space(self, space_id: UUID, filter_name: str) -> None:
+    async def remove_filter_from_space(self, space_id: UUID, filter_id: str) -> None:
         """Remove a filter from a space.
 
         Args:
             space_id: The space to remove the filter from
-            filter_name: The name of the filter to remove
+            filter_id: The id of the filter to remove
 
         Raises:
             NotFoundError: If space or filter not found
@@ -99,20 +99,20 @@ class FilterService(Service):
         space = self.core.services.space.get_space(space_id)
 
         # Check if filter exists
-        if space.get_filter(filter_name) is None:
-            raise NotFoundError(f"Filter '{filter_name}' not found in space")
+        if space.get_filter(filter_id) is None:
+            raise NotFoundError(f"Filter '{filter_id}' not found in space")
 
         # Remove filter from space
         spaces_collection = self.database["spaces"]
-        await spaces_collection.update_one({"_id": space_id}, {"$pull": {"filters": {"name": filter_name}}})
+        await spaces_collection.update_one({"_id": space_id}, {"$pull": {"filters": {"id": filter_id}}})
         await self.core.services.space.update_space_cache(space_id)
 
-    def build_mongo_query(self, space_id: UUID, filter_name: str) -> dict[str, Any]:
+    def build_mongo_query(self, space_id: UUID, filter_id: str) -> dict[str, Any]:
         """Build MongoDB query document from a filter.
 
         Args:
             space_id: The space ID containing the filter
-            filter_name: The name of the filter to use
+            filter_id: The id of the filter to use
 
         Returns:
             MongoDB query document with filter conditions
@@ -121,9 +121,9 @@ class FilterService(Service):
             NotFoundError: If space or filter not found
         """
         space = self.core.services.space.get_space(space_id)
-        filter_def = space.get_filter(filter_name)
+        filter_def = space.get_filter(filter_id)
         if filter_def is None:
-            raise NotFoundError(f"Filter '{filter_name}' not found in space")
+            raise NotFoundError(f"Filter '{filter_id}' not found in space")
 
         # Build the base query with space_id
         query: dict[str, Any] = {"space_id": space_id}
@@ -145,12 +145,12 @@ class FilterService(Service):
 
         return query
 
-    def build_mongo_sort(self, space_id: UUID, filter_name: str) -> list[tuple[str, int]]:
+    def build_mongo_sort(self, space_id: UUID, filter_id: str) -> list[tuple[str, int]]:
         """Build MongoDB sort specification from a filter.
 
         Args:
             space_id: The space ID containing the filter
-            filter_name: The name of the filter to use
+            filter_id: The id of the filter to use
 
         Returns:
             List of (field, direction) tuples for sorting
@@ -159,9 +159,9 @@ class FilterService(Service):
             NotFoundError: If space or filter not found
         """
         space = self.core.services.space.get_space(space_id)
-        filter_def = space.get_filter(filter_name)
+        filter_def = space.get_filter(filter_id)
         if filter_def is None:
-            raise NotFoundError(f"Filter '{filter_name}' not found in space")
+            raise NotFoundError(f"Filter '{filter_id}' not found in space")
 
         # Build sort specification
         if not filter_def.sort:
@@ -172,26 +172,26 @@ class FilterService(Service):
         for field in filter_def.sort:
             if field.startswith("-"):
                 # Descending sort
-                field_name = field[1:]
+                field_id = field[1:]
                 direction = -1
             else:
                 # Ascending sort
-                field_name = field
+                field_id = field
                 direction = 1
 
-            field_path = self._get_field_path(field_name)
+            field_path = self._get_field_path(field_id)
             sort_spec.append((field_path, direction))
 
         return sort_spec
 
-    def _get_field_path(self, field_name: str) -> str:
-        """Get the MongoDB field path for a field name.
+    def _get_field_path(self, field_id: str) -> str:
+        """Get the MongoDB field path for a field id.
 
         System fields are used directly, custom fields are prefixed with 'fields.'
         """
-        if field_name in NOTE_SYSTEM_FIELDS:
-            return field_name
-        return f"fields.{field_name}"
+        if field_id in NOTE_SYSTEM_FIELDS:
+            return field_id
+        return f"fields.{field_id}"
 
     def _build_condition_query(self, operator: FilterOperator, value: Any) -> Any:  # noqa: ANN401
         """Build MongoDB query for a single condition.

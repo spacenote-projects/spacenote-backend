@@ -26,7 +26,7 @@ async def add_filter_to_space(space_slug: str, filter: Filter, app: AppDep, auth
 
 
 @router.delete(
-    "/spaces/{space_slug}/filters/{filter_name}",
+    "/spaces/{space_slug}/filters/{filter_id}",
     summary="Remove filter from space",
     description="Remove a filter definition from a space. Only space members can remove filters.",
     operation_id="removeFilterFromSpace",
@@ -38,5 +38,5 @@ async def add_filter_to_space(space_slug: str, filter: Filter, app: AppDep, auth
         404: {"model": ErrorResponse, "description": "Space or filter not found"},
     },
 )
-async def remove_filter_from_space(space_slug: str, filter_name: str, app: AppDep, auth_token: AuthTokenDep) -> None:
-    await app.remove_filter_from_space(auth_token, space_slug, filter_name)
+async def remove_filter_from_space(space_slug: str, filter_id: str, app: AppDep, auth_token: AuthTokenDep) -> None:
+    await app.remove_filter_from_space(auth_token, space_slug, filter_id)

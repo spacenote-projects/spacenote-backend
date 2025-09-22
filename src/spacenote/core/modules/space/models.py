@@ -29,16 +29,16 @@ class Space(MongoModel):
     filters: list[Filter] = Field(default_factory=list)  # Saved filter configurations
     templates: SpaceTemplates = SpaceTemplates()  # Templates for customizing views
 
-    def get_field(self, name: str) -> SpaceField | None:
-        """Get field definition by name."""
+    def get_field(self, id: str) -> SpaceField | None:
+        """Get field definition by id."""
         for field in self.fields:
-            if field.name == name:
+            if field.id == id:
                 return field
         return None
 
-    def get_filter(self, name: str) -> Filter | None:
-        """Get filter definition by name."""
+    def get_filter(self, id: str) -> Filter | None:
+        """Get filter definition by id."""
         for filter in self.filters:
-            if filter.name == name:
+            if filter.id == id:
                 return filter
         return None

@@ -45,7 +45,7 @@ class Filter(BaseModel):
     # Force unified schema for both input/output in OpenAPI to avoid Filter-Input/Output duplication
     model_config = ConfigDict(json_schema_mode_override="validation")
 
-    name: str = Field(..., description="Unique filter identifier within the space")
+    id: str = Field(..., description="Unique filter identifier within the space")
     title: str = Field(..., description="Display name for the filter")
     description: str = Field("", description="Optional description of what this filter shows")
     conditions: list[FilterCondition] = Field(default_factory=list, description="Filter conditions (combined with AND)")

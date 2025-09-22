@@ -75,7 +75,7 @@ async def list_notes(
     auth_token: AuthTokenDep,
     limit: Annotated[int, Query(ge=1, description="Maximum items to return")] = 50,
     offset: Annotated[int, Query(ge=0, description="Number of items to skip")] = 0,
-    filter: Annotated[str | None, Query(description="Optional filter name to apply")] = None,
+    filter: Annotated[str | None, Query(description="Optional filter id to apply")] = None,
 ) -> PaginationResult[Note]:
     return await app.get_notes_by_space(auth_token, space_slug, limit, offset, filter)
 

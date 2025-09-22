@@ -26,7 +26,7 @@ async def add_field_to_space(space_slug: str, field: SpaceField, app: AppDep, au
 
 
 @router.delete(
-    "/spaces/{space_slug}/fields/{field_name}",
+    "/spaces/{space_slug}/fields/{field_id}",
     summary="Remove field from space",
     description=(
         "Remove a field definition from a space. Only space members can remove fields. The field must not be in use by any notes."
@@ -41,5 +41,5 @@ async def add_field_to_space(space_slug: str, field: SpaceField, app: AppDep, au
         404: {"model": ErrorResponse, "description": "Space or field not found"},
     },
 )
-async def remove_field_from_space(space_slug: str, field_name: str, app: AppDep, auth_token: AuthTokenDep) -> None:
-    await app.remove_field_from_space(auth_token, space_slug, field_name)
+async def remove_field_from_space(space_slug: str, field_id: str, app: AppDep, auth_token: AuthTokenDep) -> None:
+    await app.remove_field_from_space(auth_token, space_slug, field_id)

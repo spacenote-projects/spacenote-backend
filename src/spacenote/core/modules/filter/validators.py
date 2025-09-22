@@ -48,25 +48,25 @@ def validate_filter_value(field: SpaceField, operator: FilterOperator, value: Fi
 def _validate_string_value(field: SpaceField, operator: FilterOperator, value: Any) -> None:  # noqa: ARG001, ANN401
     """Validate string field filter value."""
     if not isinstance(value, str):
-        raise ValidationError(f"Filter value for string field '{field.name}' must be a string, got {type(value).__name__}")
+        raise ValidationError(f"Filter value for string field '{field.id}' must be a string, got {type(value).__name__}")
 
 
 def _validate_boolean_value(field: SpaceField, operator: FilterOperator, value: Any) -> None:  # noqa: ARG001, ANN401
     """Validate boolean field filter value."""
     if not isinstance(value, bool):
-        raise ValidationError(f"Filter value for boolean field '{field.name}' must be a boolean, got {type(value).__name__}")
+        raise ValidationError(f"Filter value for boolean field '{field.id}' must be a boolean, got {type(value).__name__}")
 
 
 def _validate_int_value(field: SpaceField, operator: FilterOperator, value: Any) -> None:  # noqa: ARG001, ANN401
     """Validate integer field filter value."""
     if not isinstance(value, int) or isinstance(value, bool):  # bool is subclass of int in Python
-        raise ValidationError(f"Filter value for integer field '{field.name}' must be an integer, got {type(value).__name__}")
+        raise ValidationError(f"Filter value for integer field '{field.id}' must be an integer, got {type(value).__name__}")
 
 
 def _validate_float_value(field: SpaceField, operator: FilterOperator, value: Any) -> None:  # noqa: ARG001, ANN401
     """Validate float field filter value."""
     if not isinstance(value, (int, float)) or isinstance(value, bool):
-        raise ValidationError(f"Filter value for float field '{field.name}' must be a number, got {type(value).__name__}")
+        raise ValidationError(f"Filter value for float field '{field.id}' must be a number, got {type(value).__name__}")
 
 
 def _validate_datetime_value(field: SpaceField, operator: FilterOperator, value: Any) -> None:  # noqa: ARG001, ANN401
@@ -87,11 +87,11 @@ def _validate_datetime_value(field: SpaceField, operator: FilterOperator, value:
                     continue
                 else:
                     return
-            raise ValidationError(f"Invalid datetime format for filter on field '{field.name}': {value}")  # noqa: TRY301
+            raise ValidationError(f"Invalid datetime format for filter on field '{field.id}': {value}")  # noqa: TRY301
         except Exception as e:
-            raise ValidationError(f"Invalid datetime value for filter on field '{field.name}': {value}") from e
+            raise ValidationError(f"Invalid datetime value for filter on field '{field.id}': {value}") from e
     elif not isinstance(value, datetime):
-        raise ValidationError(f"Filter value for datetime field '{field.name}' must be a datetime or valid datetime string")
+        raise ValidationError(f"Filter value for datetime field '{field.id}' must be a datetime or valid datetime string")
 
 
 def _validate_user_value(field: SpaceField, operator: FilterOperator, value: Any) -> None:  # noqa: ARG001, ANN401
@@ -103,25 +103,25 @@ def _validate_user_value(field: SpaceField, operator: FilterOperator, value: Any
     elif isinstance(value, UUID):
         pass  # Valid UUID
     else:
-        raise ValidationError(f"Filter value for user field '{field.name}' must be a UUID or username string")
+        raise ValidationError(f"Filter value for user field '{field.id}' must be a UUID or username string")
 
 
 def _validate_string_choice_value(field: SpaceField, operator: FilterOperator, value: Any) -> None:  # noqa: ANN401
     """Validate string choice field filter value."""
     if operator in (FilterOperator.IN, FilterOperator.NIN):
         if not isinstance(value, list):
-            raise ValidationError(f"Filter value for operator '{operator}' on field '{field.name}' must be a list")
+            raise ValidationError(f"Filter value for operator '{operator}' on field '{field.id}' must be a list")
         for item in value:
             if not isinstance(item, str):
-                raise ValidationError(f"All values in list for field '{field.name}' must be strings")
+                raise ValidationError(f"All values in list for field '{field.id}' must be strings")
     elif not isinstance(value, str):
-        raise ValidationError(f"Filter value for string choice field '{field.name}' must be a string")
+        raise ValidationError(f"Filter value for string choice field '{field.id}' must be a string")
 
 
 def _validate_tags_value(field: SpaceField, operator: FilterOperator, value: Any) -> None:  # noqa: ARG001, ANN401
     """Validate tags field filter value."""
     if not isinstance(value, list):
-        raise ValidationError(f"Filter value for tags field '{field.name}' must be a list")
+        raise ValidationError(f"Filter value for tags field '{field.id}' must be a list")
     for item in value:
         if not isinstance(item, str):
-            raise ValidationError(f"All values in list for tags field '{field.name}' must be strings")
+            raise ValidationError(f"All values in list for tags field '{field.id}' must be strings")

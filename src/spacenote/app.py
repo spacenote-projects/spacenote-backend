@@ -73,12 +73,12 @@ class App:
         return self._resolve_space(space_slug)
 
     async def get_notes_by_space(
-        self, auth_token: AuthToken, space_slug: str, limit: int = 50, offset: int = 0, filter_name: str | None = None
+        self, auth_token: AuthToken, space_slug: str, limit: int = 50, offset: int = 0, filter_id: str | None = None
     ) -> PaginationResult[Note]:
         """Get paginated notes in space (members only), optionally filtered."""
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
-        return await self._core.services.note.list_notes(space.id, limit, offset, filter_name)
+        return await self._core.services.note.list_notes(space.id, limit, offset, filter_id)
 
     async def get_note_by_number(self, auth_token: AuthToken, space_slug: str, number: int) -> Note:
         """Get specific note by number (members only)."""
@@ -149,17 +149,17 @@ class App:
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         return await self._core.services.space.update_template(space.id, template_name, template_content)
 
-    async def update_space_list_fields(self, auth_token: AuthToken, space_slug: str, field_names: list[str]) -> Space:
+    async def update_space_list_fields(self, auth_token: AuthToken, space_slug: str, field_ids: list[str]) -> Space:
         """Update the list_fields for a space (members only)."""
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
-        return await self._core.services.space.update_list_fields(space.id, field_names)
+        return await self._core.services.space.update_list_fields(space.id, field_ids)
 
-    async def update_space_hidden_create_fields(self, auth_token: AuthToken, space_slug: str, field_names: list[str]) -> Space:
+    async def update_space_hidden_create_fields(self, auth_token: AuthToken, space_slug: str, field_ids: list[str]) -> Space:
         """Update the hidden_create_fields for a space (members only)."""
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
-        return await self._core.services.space.update_hidden_create_fields(space.id, field_names)
+        return await self._core.services.space.update_hidden_create_fields(space.id, field_ids)
 
     async def delete_space(self, auth_token: AuthToken, space_slug: str) -> None:
         """Delete a space and all its data (admin only)."""
@@ -185,11 +185,11 @@ class App:
         await self._core.services.access.ensure_authenticated(auth_token)
         return await self._core.services.export.import_space(export_data, new_slug, create_missing_users)
 
-    async def remove_field_from_space(self, auth_token: AuthToken, space_slug: str, field_name: str) -> None:
+    async def remove_field_from_space(self, auth_token: AuthToken, space_slug: str, field_id: str) -> None:
         """Remove field from space (members only)."""
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
-        await self._core.services.field.remove_field_from_space(space.id, field_name)
+        await self._core.services.field.remove_field_from_space(space.id, field_id)
 
     async def add_filter_to_space(self, auth_token: AuthToken, space_slug: str, filter: Filter) -> Space:
         """Add custom filter to space (members only)."""
@@ -198,11 +198,11 @@ class App:
         await self._core.services.filter.add_filter_to_space(space.id, filter)
         return self._resolve_space(space_slug)
 
-    async def remove_filter_from_space(self, auth_token: AuthToken, space_slug: str, filter_name: str) -> None:
+    async def remove_filter_from_space(self, auth_token: AuthToken, space_slug: str, filter_id: str) -> None:
         """Remove filter from space (members only)."""
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
-        await self._core.services.filter.remove_filter_from_space(space.id, filter_name)
+        await self._core.services.filter.remove_filter_from_space(space.id, filter_id)
 
     # === Private resolver methods ===
     def _resolve_space(self, slug: str) -> Space:

@@ -44,7 +44,7 @@ class SpecialValue(StrEnum):
 class SpaceField(BaseModel):
     """Field definition in a space schema."""
 
-    name: str = Field(..., description="Field name (must be unique within space)")
+    id: str = Field(..., description="Field identifier (must be unique within space)")
     type: FieldType = Field(..., description="Field data type")
     required: bool = Field(False, description="Whether this field is required")
     options: dict[FieldOption, FieldOptionValueType] = Field(

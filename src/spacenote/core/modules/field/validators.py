@@ -64,9 +64,9 @@ class FieldValidator(ABC):
         Raises:
             ValidationError: If the field definition is invalid
         """
-        # Always validate field name first
-        if not field.name or not field.name.replace("_", "").isalnum():
-            raise ValidationError(f"Invalid field name: {field.name}")
+        # Always validate field id first
+        if not field.id or not field.id.replace("_", "").isalnum():
+            raise ValidationError(f"Invalid field id: {field.id}")
 
         # Then delegate to subclass for type-specific validation
         return self._validate_type_specific_field_definition(field)
@@ -97,7 +97,7 @@ class StringValidator(FieldValidator):
             if field.default is not None:
                 return field.default
             if field.required:
-                raise ValidationError(f"Required field '{field.name}' has no value")
+                raise ValidationError(f"Required field '{field.id}' has no value")
             return None
         if raw_value == "" and not field.required:
             return None
@@ -115,7 +115,7 @@ class MarkdownValidator(FieldValidator):
             if field.default is not None:
                 return field.default
             if field.required:
-                raise ValidationError(f"Required field '{field.name}' has no value")
+                raise ValidationError(f"Required field '{field.id}' has no value")
             return None
         if raw_value == "" and not field.required:
             return None
@@ -141,7 +141,7 @@ class UserValidator(FieldValidator):
                     return self.current_user_id
                 return field.default
             if field.required:
-                raise ValidationError(f"Required field '{field.name}' has no value")
+                raise ValidationError(f"Required field '{field.id}' has no value")
             return None
 
         if raw_value == "" and not field.required:
@@ -202,7 +202,7 @@ class BooleanValidator(FieldValidator):
             if field.default is not None:
                 return field.default
             if field.required:
-                raise ValidationError(f"Required field '{field.name}' has no value")
+                raise ValidationError(f"Required field '{field.id}' has no value")
             return None
 
         if raw_value == "" and not field.required:
@@ -212,7 +212,7 @@ class BooleanValidator(FieldValidator):
             return True
         if raw_value.lower() in ("false", "0", "no", "off", ""):
             return False
-        raise ValidationError(f"Invalid boolean value for field '{field.name}': {raw_value}")
+        raise ValidationError(f"Invalid boolean value for field '{field.id}': {raw_value}")
 
     def _validate_type_specific_field_definition(self, field: SpaceField) -> SpaceField:
         if field.default is not None and not isinstance(field.default, bool):
@@ -228,7 +228,7 @@ class IntValidator(FieldValidator):
             if field.default is not None:
                 return field.default
             if field.required:
-                raise ValidationError(f"Required field '{field.name}' has no value")
+                raise ValidationError(f"Required field '{field.id}' has no value")
             return None
 
         if raw_value == "" and not field.required:
@@ -237,7 +237,7 @@ class IntValidator(FieldValidator):
         try:
             int_value = int(raw_value)
         except ValueError as e:
-            raise ValidationError(f"Invalid integer value for field '{field.name}': {raw_value}") from e
+            raise ValidationError(f"Invalid integer value for field '{field.id}': {raw_value}") from e
 
         self._validate_numeric_range(field, int_value)
         return int_value
@@ -255,12 +255,12 @@ class IntValidator(FieldValidator):
         if FieldOption.MIN in field.options:
             min_val = field.options[FieldOption.MIN]
             if isinstance(min_val, (int, float)) and value < min_val:
-                raise ValidationError(f"Value for field '{field.name}' is below minimum: {value} < {min_val}")
+                raise ValidationError(f"Value for field '{field.id}' is below minimum: {value} < {min_val}")
 
         if FieldOption.MAX in field.options:
             max_val = field.options[FieldOption.MAX]
             if isinstance(max_val, (int, float)) and value > max_val:
-                raise ValidationError(f"Value for field '{field.name}' is above maximum: {value} > {max_val}")
+                raise ValidationError(f"Value for field '{field.id}' is above maximum: {value} > {max_val}")
 
 
 class FloatValidator(FieldValidator):
@@ -271,7 +271,7 @@ class FloatValidator(FieldValidator):
             if field.default is not None:
                 return field.default
             if field.required:
-                raise ValidationError(f"Required field '{field.name}' has no value")
+                raise ValidationError(f"Required field '{field.id}' has no value")
             return None
 
         if raw_value == "" and not field.required:
@@ -280,7 +280,7 @@ class FloatValidator(FieldValidator):
         try:
             float_value = float(raw_value)
         except ValueError as e:
-            raise ValidationError(f"Invalid float value for field '{field.name}': {raw_value}") from e
+            raise ValidationError(f"Invalid float value for field '{field.id}': {raw_value}") from e
 
         self._validate_numeric_range(field, float_value)
         return float_value
@@ -298,12 +298,12 @@ class FloatValidator(FieldValidator):
         if FieldOption.MIN in field.options:
             min_val = field.options[FieldOption.MIN]
             if isinstance(min_val, (int, float)) and value < min_val:
-                raise ValidationError(f"Value for field '{field.name}' is below minimum: {value} < {min_val}")
+                raise ValidationError(f"Value for field '{field.id}' is below minimum: {value} < {min_val}")
 
         if FieldOption.MAX in field.options:
             max_val = field.options[FieldOption.MAX]
             if isinstance(max_val, (int, float)) and value > max_val:
-                raise ValidationError(f"Value for field '{field.name}' is above maximum: {value} > {max_val}")
+                raise ValidationError(f"Value for field '{field.id}' is above maximum: {value} > {max_val}")
 
 
 class StringChoiceValidator(FieldValidator):
@@ -314,7 +314,7 @@ class StringChoiceValidator(FieldValidator):
             if field.default is not None:
                 return field.default
             if field.required:
-                raise ValidationError(f"Required field '{field.name}' has no value")
+                raise ValidationError(f"Required field '{field.id}' has no value")
             return None
 
         if raw_value == "" and not field.required:
@@ -326,7 +326,7 @@ class StringChoiceValidator(FieldValidator):
                 raise ValidationError("Invalid field configuration: VALUES must be a list")
             if raw_value not in allowed_values:
                 raise ValidationError(
-                    f"Invalid choice for field '{field.name}': '{raw_value}'. Allowed values: {', '.join(allowed_values)}"
+                    f"Invalid choice for field '{field.id}': '{raw_value}'. Allowed values: {', '.join(allowed_values)}"
                 )
         return raw_value
 
@@ -347,7 +347,7 @@ class TagsValidator(FieldValidator):
             if field.default is not None:
                 return field.default
             if field.required:
-                raise ValidationError(f"Required field '{field.name}' has no value")
+                raise ValidationError(f"Required field '{field.id}' has no value")
             return None
 
         if raw_value == "" and not field.required:
@@ -362,8 +362,7 @@ class TagsValidator(FieldValidator):
             invalid_tags = [tag for tag in tags if tag not in allowed_values]
             if invalid_tags:
                 raise ValidationError(
-                    f"Invalid tags for field '{field.name}': {', '.join(invalid_tags)}. "
-                    f"Allowed values: {', '.join(allowed_values)}"
+                    f"Invalid tags for field '{field.id}': {', '.join(invalid_tags)}. Allowed values: {', '.join(allowed_values)}"
                 )
         return tags
 
@@ -379,7 +378,7 @@ class DateTimeValidator(FieldValidator):
             if field.default is not None:
                 return field.default
             if field.required:
-                raise ValidationError(f"Required field '{field.name}' has no value")
+                raise ValidationError(f"Required field '{field.id}' has no value")
             return None
 
         if raw_value == "" and not field.required:
@@ -397,7 +396,7 @@ class DateTimeValidator(FieldValidator):
                 return datetime.strptime(raw_value, fmt)  # noqa: DTZ007
             except ValueError:
                 continue
-        raise ValidationError(f"Invalid datetime format for field '{field.name}': {raw_value}")
+        raise ValidationError(f"Invalid datetime format for field '{field.id}': {raw_value}")
 
     def _validate_type_specific_field_definition(self, field: SpaceField) -> SpaceField:
         return field
