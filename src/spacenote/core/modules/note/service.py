@@ -30,7 +30,7 @@ class NoteService(Service):
         await self._collection.create_index([("commented_at", -1)])
 
     async def list_notes(
-        self, space_id: UUID, limit: int = 50, offset: int = 0, filter_id: str | None = None
+        self, space_id: UUID, limit: int = 50, offset: int = 0, filter_id: str | None = None, current_user_id: UUID | None = None
     ) -> PaginationResult[Note]:
         """Get paginated notes in space, optionally filtered.
 
@@ -39,13 +39,14 @@ class NoteService(Service):
             limit: Maximum number of notes to return
             offset: Number of notes to skip
             filter_id: Optional filter id to apply
+            current_user_id: The ID of the current logged-in user (optional, for $me substitution)
 
         Returns:
             Paginated list of notes
         """
         if filter_id:
             # Use filter to build query and sort
-            query = self.core.services.filter.build_mongo_query(space_id, filter_id)
+            query = self.core.services.filter.build_mongo_query(space_id, filter_id, current_user_id)
             sort_spec = self.core.services.filter.build_mongo_sort(space_id, filter_id)
         else:
             # Default behavior - all notes sorted by number descending

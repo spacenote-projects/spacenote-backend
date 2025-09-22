@@ -4,7 +4,7 @@ from uuid import UUID
 from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
-from spacenote.core.modules.field.models import FieldType, SpaceField
+from spacenote.core.modules.field.models import FieldType, SpaceField, SpecialValue
 from spacenote.core.modules.filter.models import FIELD_TYPE_OPERATORS, Filter, FilterOperator
 from spacenote.core.modules.filter.validators import validate_filter_value
 from spacenote.core.modules.note.models import NOTE_SYSTEM_FIELDS
@@ -107,12 +107,13 @@ class FilterService(Service):
         await spaces_collection.update_one({"_id": space_id}, {"$pull": {"filters": {"id": filter_id}}})
         await self.core.services.space.update_space_cache(space_id)
 
-    def build_mongo_query(self, space_id: UUID, filter_id: str) -> dict[str, Any]:
+    def build_mongo_query(self, space_id: UUID, filter_id: str, current_user_id: UUID | None = None) -> dict[str, Any]:
         """Build MongoDB query document from a filter.
 
         Args:
             space_id: The space ID containing the filter
             filter_id: The id of the filter to use
+            current_user_id: The ID of the current logged-in user (optional, for $me substitution)
 
         Returns:
             MongoDB query document with filter conditions
@@ -131,7 +132,20 @@ class FilterService(Service):
         # Add filter conditions
         for condition in filter_def.conditions:
             field_path = self._get_field_path(condition.field)
-            mongo_operator = self._build_condition_query(condition.operator, condition.value)
+
+            # Get field definition to check if it's a USER field
+            field = space.get_field(condition.field)
+            if field is None:
+                field = self._get_system_field_definition(condition.field)
+
+            # Replace $me with current user ID for USER fields
+            value = condition.value
+            if field and field.type == FieldType.USER and value == SpecialValue.ME:
+                if current_user_id is None:
+                    raise ValidationError(f"Cannot use '{SpecialValue.ME}' without a logged-in user context")
+                value = current_user_id
+
+            mongo_operator = self._build_condition_query(condition.operator, value)
 
             # Handle multiple conditions on the same field
             if field_path in query:

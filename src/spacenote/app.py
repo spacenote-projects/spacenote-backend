@@ -78,7 +78,9 @@ class App:
         """Get paginated notes in space (members only), optionally filtered."""
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
-        return await self._core.services.note.list_notes(space.id, limit, offset, filter_id)
+        # Get current user to pass for $me substitution
+        current_user = await self._core.services.access.ensure_authenticated(auth_token)
+        return await self._core.services.note.list_notes(space.id, limit, offset, filter_id, current_user.id)
 
     async def get_note_by_number(self, auth_token: AuthToken, space_slug: str, number: int) -> Note:
         """Get specific note by number (members only)."""
