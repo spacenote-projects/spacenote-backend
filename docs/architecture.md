@@ -28,23 +28,34 @@ spacenote-backend/
 │   │   │   ├── session/      # Session management
 │   │   │   ├── access/       # Access control
 │   │   │   ├── counter/      # ID generation
-│   │   │   └── filter/       # Query filters
+│   │   │   ├── filter/       # Query filters
+│   │   │   └── export/       # CSV/JSON export functionality
 │   │   ├── core.py           # Core container & DI
-│   │   └── db.py             # Database utilities
+│   │   ├── db.py             # Database utilities
+│   │   └── pagination.py     # Pagination utilities
 │   ├── web/                  # Web layer
 │   │   ├── routers/          # FastAPI route handlers
 │   │   │   ├── auth.py       # Authentication endpoints
 │   │   │   ├── users.py      # User endpoints
 │   │   │   ├── spaces.py     # Space endpoints
 │   │   │   ├── notes.py      # Note endpoints
-│   │   │   └── comments.py   # Comment endpoints
+│   │   │   ├── comments.py   # Comment endpoints
+│   │   │   ├── export.py     # Export endpoints
+│   │   │   ├── fields.py     # Field management endpoints
+│   │   │   ├── filters.py    # Filter management endpoints
+│   │   │   ├── metadata.py   # Metadata endpoints
+│   │   │   └── profile.py    # User profile endpoints
 │   │   ├── deps.py           # FastAPI dependencies
 │   │   ├── server.py         # FastAPI app setup
-│   │   └── error_handlers.py # Global error handling
+│   │   ├── error_handlers.py # Global error handling
+│   │   ├── openapi.py        # OpenAPI customization
+│   │   └── runner.py         # Application runner
 │   ├── app.py                # Application facade
 │   ├── config.py             # Configuration
 │   ├── main.py               # Entry point
-│   └── errors.py             # Custom exceptions
+│   ├── errors.py             # Custom exceptions
+│   ├── logging.py            # Logging configuration
+│   └── utils.py              # Utility functions
 ├── justfile                  # Task automation
 └── pyproject.toml           # Project dependencies
 ```
