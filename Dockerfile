@@ -35,6 +35,7 @@ COPY --chown=appuser:appuser ./src /app/src
 
 # Set environment variables
 ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH="/app/src" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     # Default app settings (override via docker-compose or k8s)
@@ -50,7 +51,7 @@ EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/api/v1/metadata/health || exit 1
+    CMD curl -f http://localhost:8000/health || exit 1
 
 # Run application
 CMD ["python", "-m", "spacenote.main"]

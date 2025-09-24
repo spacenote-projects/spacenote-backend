@@ -49,10 +49,11 @@ docker-build-push tag="latest":
     docker tag spacenote-backend:{{tag}} ghcr.io/spacenote-projects/spacenote-backend:{{tag}}
     docker push ghcr.io/spacenote-projects/spacenote-backend:{{tag}}
 
-docker-run:
-    docker run --rm -it \
+docker-run-local:
+    docker run --rm \
+        --name spacenote-test \
         -p 8000:8000 \
-        -e SPACENOTE_DATABASE_URL=mongodb://host.docker.internal:27017/spacenote \
-        -e SPACENOTE_SESSION_SECRET_KEY=changeme \
-        -e SPACENOTE_CORS_ORIGINS='["http://localhost:3000"]' \
+        -e SPACENOTE_DATABASE_URL="${SPACENOTE_DATABASE_URL//127.0.0.1/host.docker.internal}" \
+        -e SPACENOTE_SESSION_SECRET_KEY="${SPACENOTE_SESSION_SECRET_KEY}" \
+        -e SPACENOTE_CORS_ORIGINS="${SPACENOTE_CORS_ORIGINS}" \
         spacenote-backend:latest
