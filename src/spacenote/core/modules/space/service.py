@@ -136,6 +136,39 @@ class SpaceService(Service):
         await self._collection.update_one({"_id": space_id}, {"$set": {"hidden_create_fields": field_ids}})
         return await self.update_space_cache(space_id)
 
+    async def update_title(self, space_id: UUID, title: str) -> Space:
+        """Update the title of a space."""
+        self.get_space(space_id)
+
+        if not title.strip():
+            raise ValidationError("Title cannot be empty")
+
+        await self._collection.update_one({"_id": space_id}, {"$set": {"title": title}})
+        return await self.update_space_cache(space_id)
+
+    async def update_description(self, space_id: UUID, description: str) -> Space:
+        """Update the description of a space."""
+        self.get_space(space_id)
+
+        await self._collection.update_one({"_id": space_id}, {"$set": {"description": description}})
+        return await self.update_space_cache(space_id)
+
+    async def update_slug(self, space_id: UUID, new_slug: str) -> Space:
+        """Update the slug of a space."""
+        space = self.get_space(space_id)
+
+        if not utils.is_slug(new_slug):
+            raise ValidationError(f"Invalid slug format: '{new_slug}'")
+
+        if space.slug == new_slug:
+            return space
+
+        if self.has_slug(new_slug):
+            raise ValidationError(f"Space with slug '{new_slug}' already exists")
+
+        await self._collection.update_one({"_id": space_id}, {"$set": {"slug": new_slug}})
+        return await self.update_space_cache(space_id)
+
     async def delete_space(self, space_id: UUID) -> None:
         """Delete a space and remove from cache."""
         result = await self._collection.delete_one({"_id": space_id})

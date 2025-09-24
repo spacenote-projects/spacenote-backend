@@ -163,6 +163,24 @@ class App:
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         return await self._core.services.space.update_hidden_create_fields(space.id, field_ids)
 
+    async def update_space_title(self, auth_token: AuthToken, space_slug: str, title: str) -> Space:
+        """Update the title of a space (members only)."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.space.update_title(space.id, title)
+
+    async def update_space_description(self, auth_token: AuthToken, space_slug: str, description: str) -> Space:
+        """Update the description of a space (members only)."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.space.update_description(space.id, description)
+
+    async def update_space_slug(self, auth_token: AuthToken, space_slug: str, new_slug: str) -> Space:
+        """Update the slug of a space (members only)."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.space.update_slug(space.id, new_slug)
+
     async def delete_space(self, auth_token: AuthToken, space_slug: str) -> None:
         """Delete a space and all its data (admin only)."""
         await self._core.services.access.ensure_admin(auth_token)

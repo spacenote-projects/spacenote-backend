@@ -188,6 +188,86 @@ async def update_space_hidden_create_fields(
     return await app.update_space_hidden_create_fields(auth_token, space_slug, req.field_ids)
 
 
+class UpdateSpaceTitleRequest(BaseModel):
+    """Request to update space title."""
+
+    title: str = Field(..., min_length=1, description="New title for the space")
+
+    model_config = {"json_schema_extra": {"examples": [{"title": "My Updated Task Tracker"}]}}
+
+
+@router.patch(
+    "/spaces/{space_slug}/title",
+    summary="Update space title",
+    description="Update the title of a space. Only space members can update the title.",
+    operation_id="updateSpaceTitle",
+    responses={
+        200: {"description": "Space title updated successfully"},
+        400: {"model": ErrorResponse, "description": "Invalid title"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Not a member of this space"},
+        404: {"model": ErrorResponse, "description": "Space not found"},
+    },
+)
+async def update_space_title(space_slug: str, req: UpdateSpaceTitleRequest, app: AppDep, auth_token: AuthTokenDep) -> Space:
+    return await app.update_space_title(auth_token, space_slug, req.title)
+
+
+class UpdateSpaceDescriptionRequest(BaseModel):
+    """Request to update space description."""
+
+    description: str = Field(..., description="New description for the space")
+
+    model_config = {"json_schema_extra": {"examples": [{"description": "Track personal and work tasks with deadlines"}]}}
+
+
+@router.patch(
+    "/spaces/{space_slug}/description",
+    summary="Update space description",
+    description="Update the description of a space. Only space members can update the description.",
+    operation_id="updateSpaceDescription",
+    responses={
+        200: {"description": "Space description updated successfully"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Not a member of this space"},
+        404: {"model": ErrorResponse, "description": "Space not found"},
+    },
+)
+async def update_space_description(
+    space_slug: str, req: UpdateSpaceDescriptionRequest, app: AppDep, auth_token: AuthTokenDep
+) -> Space:
+    return await app.update_space_description(auth_token, space_slug, req.description)
+
+
+class UpdateSpaceSlugRequest(BaseModel):
+    """Request to update space slug."""
+
+    new_slug: str = Field(
+        ...,
+        description="New URL-friendly unique identifier (lowercase, numbers, hyphens; no leading/trailing/double hyphens)",
+        pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$",
+    )
+
+    model_config = {"json_schema_extra": {"examples": [{"new_slug": "updated-tasks"}]}}
+
+
+@router.patch(
+    "/spaces/{space_slug}/slug",
+    summary="Update space slug",
+    description="Update the slug of a space. Only space members can update the slug. The slug must be unique across all spaces.",
+    operation_id="updateSpaceSlug",
+    responses={
+        200: {"description": "Space slug updated successfully"},
+        400: {"model": ErrorResponse, "description": "Invalid slug format or slug already exists"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Not a member of this space"},
+        404: {"model": ErrorResponse, "description": "Space not found"},
+    },
+)
+async def update_space_slug(space_slug: str, req: UpdateSpaceSlugRequest, app: AppDep, auth_token: AuthTokenDep) -> Space:
+    return await app.update_space_slug(auth_token, space_slug, req.new_slug)
+
+
 @router.delete(
     "/spaces/{space_slug}",
     summary="Delete space",
