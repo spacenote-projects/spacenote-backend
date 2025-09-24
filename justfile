@@ -39,3 +39,20 @@ agent-start: agent-stop # For AI agents
 agent-stop: # For AI agents
     -pkill -F agent.pid 2>/dev/null || true
     -rm -f agent.pid agent.log
+
+# Docker commands
+docker-build:
+    docker build -t spacenote-backend:latest .
+
+docker-build-push tag="latest":
+    docker build -t spacenote-backend:{{tag}} .
+    docker tag spacenote-backend:{{tag}} ghcr.io/spacenote-projects/spacenote-backend:{{tag}}
+    docker push ghcr.io/spacenote-projects/spacenote-backend:{{tag}}
+
+docker-run:
+    docker run --rm -it \
+        -p 8000:8000 \
+        -e SPACENOTE_DATABASE_URL=mongodb://host.docker.internal:27017/spacenote \
+        -e SPACENOTE_SESSION_SECRET_KEY=changeme \
+        -e SPACENOTE_CORS_ORIGINS='["http://localhost:3000"]' \
+        spacenote-backend:latest
