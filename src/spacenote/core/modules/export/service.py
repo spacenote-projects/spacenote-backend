@@ -179,10 +179,11 @@ class ExportService(Service):
         - Members (those that exist in the system, or creates them if create_missing_users=True)
         - Fields
         - Templates
+        - List fields configuration
+        - Hidden create fields configuration
+        - Filters
         - Notes (if present in export_data)
         - Comments (if present in export_data)
-
-        TODO: Import list_fields, hidden_create_fields, filters when SpaceService supports updating them.
         """
         slug = new_slug or export_data.space.slug
 
@@ -234,6 +235,22 @@ class ExportService(Service):
         if export_data.space.templates.note_list:
             await self.core.services.space.update_template(space.id, "note_list", export_data.space.templates.note_list)
 
+        # Import list_fields if present
+        if export_data.space.list_fields:
+            await self.core.services.space.update_list_fields(space.id, export_data.space.list_fields)
+            logger.info("import_list_fields", space_id=space.id, count=len(export_data.space.list_fields))
+
+        # Import hidden_create_fields if present
+        if export_data.space.hidden_create_fields:
+            await self.core.services.space.update_hidden_create_fields(space.id, export_data.space.hidden_create_fields)
+            logger.info("import_hidden_create_fields", space_id=space.id, count=len(export_data.space.hidden_create_fields))
+
+        # Import filters if present
+        if export_data.space.filters:
+            for filter_def in export_data.space.filters:
+                await self.core.services.filter.add_filter_to_space(space.id, filter_def)
+            logger.info("import_filters", space_id=space.id, count=len(export_data.space.filters))
+
         # Import notes if present
         note_id_map = {}  # Maps note number to note ID for comment import
         max_note_number = 0
@@ -266,18 +283,9 @@ class ExportService(Service):
                     continue
 
                 # Import note directly with its fields (already validated during export)
-                try:
-                    imported_note = await self._import_note(space.id, export_note, user_id)
-                    note_id_map[export_note.number] = imported_note.id
-                    max_note_number = max(max_note_number, export_note.number)
-
-                except Exception:
-                    logger.exception(
-                        "import_note_failed",
-                        note_number=export_note.number,
-                        space_slug=slug,
-                    )
-                    continue
+                imported_note = await self._import_note(space.id, export_note, user_id)
+                note_id_map[export_note.number] = imported_note.id
+                max_note_number = max(max_note_number, export_note.number)
 
             # Update counter to max note number to prevent conflicts
             if max_note_number > 0:
@@ -316,17 +324,8 @@ class ExportService(Service):
                     )
                     continue
 
-                try:
-                    await self._import_comment(space.id, note_id, export_comment, user_id)
-                    comments_imported += 1
-                except Exception:
-                    logger.exception(
-                        "import_comment_failed",
-                        comment_number=export_comment.number,
-                        note_number=export_comment.note_number,
-                        space_slug=slug,
-                    )
-                    continue
+                await self._import_comment(space.id, note_id, export_comment, user_id)
+                comments_imported += 1
 
             logger.info(
                 "import_comments_complete",
