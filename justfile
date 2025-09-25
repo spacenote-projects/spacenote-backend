@@ -15,7 +15,7 @@ format:
     uv run ruff format src
 
 lint *args: format
-    uv run ruff check {{args}} src
+    uv run ruff check {{args}} src tests
     uv run mypy src
 
 outdated:

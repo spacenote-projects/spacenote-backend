@@ -6,8 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-# Type for field option values (VALUES, MIN, MAX)
-FieldOptionValueType = list[str] | int | float
+# Type for field option values (VALUES, MIN, MAX, VALUE_MAPS)
+FieldOptionValueType = list[str] | int | float | dict[str, dict[str, str]]
 
 # Type for actual field values in notes
 FieldValueType = str | bool | list[str] | int | float | datetime | UUID | None
@@ -33,6 +33,7 @@ class FieldOption(StrEnum):
     VALUES = "values"  # list[str] for STRING_CHOICE
     MIN = "min"  # int/float for numeric types
     MAX = "max"  # int/float for numeric types
+    VALUE_MAPS = "value_maps"  # dict[str, dict[str, str]] for STRING_CHOICE metadata
 
 
 class SpecialValue(StrEnum):
@@ -49,6 +50,9 @@ class SpaceField(BaseModel):
     required: bool = Field(False, description="Whether this field is required")
     options: dict[FieldOption, FieldOptionValueType] = Field(
         default_factory=dict,
-        description="Field type-specific options (e.g., 'values' for string_choice, 'min'/'max' for numeric types)",
+        description=(
+            "Field type-specific options (e.g., 'values' for string_choice, "
+            "'min'/'max' for numeric types, 'value_maps' for string_choice metadata)"
+        ),
     )
     default: FieldValueType = Field(None, description="Default value for this field")

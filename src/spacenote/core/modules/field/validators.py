@@ -336,6 +336,38 @@ class StringChoiceValidator(FieldValidator):
         values = field.options[FieldOption.VALUES]
         if not isinstance(values, list) or not all(isinstance(v, str) for v in values):
             raise ValidationError("String choice 'values' must be a list of strings")
+
+        # Validate VALUE_MAPS if present
+        if FieldOption.VALUE_MAPS in field.options:
+            value_maps = field.options[FieldOption.VALUE_MAPS]
+
+            # Check it's a dict
+            if not isinstance(value_maps, dict):
+                raise ValidationError("value_maps must be a dictionary")
+
+            # Check each map
+            for map_name, map_data in value_maps.items():
+                if not isinstance(map_name, str):
+                    raise ValidationError(f"value_maps keys must be strings, got {type(map_name).__name__}")
+
+                if not isinstance(map_data, dict):
+                    raise ValidationError(f"value_maps['{map_name}'] must be a dictionary")
+
+                # Check that all VALUES have corresponding entries
+                missing_keys = set(values) - set(map_data.keys())
+                if missing_keys:
+                    raise ValidationError(f"value_maps['{map_name}'] missing entries for: {', '.join(missing_keys)}")
+
+                # Check that no extra keys exist
+                extra_keys = set(map_data.keys()) - set(values)
+                if extra_keys:
+                    raise ValidationError(f"value_maps['{map_name}'] has unknown keys: {', '.join(extra_keys)}")
+
+                # Check all values are strings
+                for key, value in map_data.items():
+                    if not isinstance(value, str):
+                        raise ValidationError(f"value_maps['{map_name}']['{key}'] must be a string, got {type(value).__name__}")
+
         return field
 
 

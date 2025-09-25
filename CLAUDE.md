@@ -29,9 +29,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Python is fully allowed, making it better for API testing without interrupting the user
 - Example: `python3 -c "import requests; r = requests.post('http://localhost:3101/api/v1/endpoint', json={'key': 'value'}, headers={'Authorization': 'Bearer TOKEN'}); print(r.json())"`
 
+## Testing Guidelines
+
+- **Pragmatic coverage** - Don't aim for 100% coverage. Test only useful use cases
+- **Human-readable** - Tests must be clear and easy to understand
+- **Single responsibility** - Each test method should test ONE specific behavior
+- **Class-based organization** - Use classes to group related tests together
+- **Descriptive naming** - Test method names should clearly state what is being tested
+- **Real-world scenarios** - Focus on testing actual user scenarios, not edge cases for the sake of it
+- **Fast execution** - Prefer unit tests that don't require database connections
+- **Focused tests** - Keep test methods small (under 15 lines when possible)
+
 ## Critical Rules
 
 - **NEVER kill or interact with port 3100** - This port is reserved for human developers only!
 - **Always use port 3101 for agent testing** - The `just agent-start` command automatically uses port 3101
-- **Never create test files** - We are in prototype mode. No tests are needed yet. If testing is absolutely necessary for some reason, ask for permission first
 
