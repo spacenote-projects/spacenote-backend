@@ -1,4 +1,4 @@
-"""Tests for field validators, focusing on value_maps feature."""
+"""Tests for STRING_CHOICE field validator."""
 
 import pytest
 
