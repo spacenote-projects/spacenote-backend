@@ -139,6 +139,7 @@ class UserValidator(FieldValidator):
                     if not self.get_member_by_id(self.current_user_id):
                         raise ValidationError("Current user is not a member of this space")
                     return self.current_user_id
+                # Default is already a UUID object after validation
                 return field.default
             if field.required:
                 raise ValidationError(f"Required field '{field.id}' has no value")
@@ -172,23 +173,28 @@ class UserValidator(FieldValidator):
             return user_id
 
     def _validate_type_specific_field_definition(self, field: SpaceField) -> SpaceField:
-        # Transform default username to UUID
+        # Transform default username or UUID string to UUID object
         if field.default is not None and isinstance(field.default, str):
             # Allow special value $me
             if field.default == SpecialValue.ME:
                 return field
 
+            # Store the original string for error messages
+            default_str = field.default
+
             # Try to parse as UUID first
             try:
-                user_id = UUID(field.default)
+                user_id = UUID(default_str)
                 user = self.get_member_by_id(user_id)
                 if not user:
                     raise ValidationError(f"Default user with ID '{user_id}' is not a member of this space")
+                # Convert UUID string to UUID object for consistency
+                field.default = user_id
             except ValueError:
                 # Not a UUID, try as username
-                user = self.get_member_by_username(field.default)
+                user = self.get_member_by_username(default_str)
                 if not user:
-                    raise ValidationError(f"Default user '{field.default}' not found or not a member of this space") from None
+                    raise ValidationError(f"Default user '{default_str}' not found or not a member of this space") from None
                 field.default = user.id
 
         return field

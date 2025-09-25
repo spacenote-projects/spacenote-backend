@@ -39,8 +39,8 @@ class TestUserFieldDefinition:
         user_id = "87654321-4321-8765-4321-876543218765"
         field = SpaceField(id="reviewer", type=FieldType.USER, default=user_id)
         result = self.validator.validate_field_definition(field)
-        # The validator doesn't convert UUID string to UUID object, just validates it exists
-        assert result.default == user_id
+        # The validator converts UUID string to UUID object for consistency
+        assert result.default == UUID(user_id)
 
     def test_user_field_with_username_default(self):
         """Test user field with username as default."""
@@ -212,8 +212,8 @@ class TestUserFieldWithMultipleMembers:
             default=str(self.members[1].id)
         )
         result = self.validator.validate_field_definition(field)
-        # The validator doesn't convert UUID string to UUID object, just validates it exists
-        assert result.default == str(self.members[1].id)
+        # The validator converts UUID string to UUID object for consistency
+        assert result.default == self.members[1].id
 
     def test_default_with_different_member_username(self):
         """Test field default with different member username."""
@@ -269,5 +269,5 @@ class TestUserFieldEdgeCases:
         )
         validated = self.validator.validate_field_definition(field)
         result = self.validator.parse_value(validated, None)
-        # The default is returned as-is (string format)
-        assert result == "87654321-4321-8765-4321-876543218765"
+        # The default is returned as UUID object
+        assert result == UUID("87654321-4321-8765-4321-876543218765")
