@@ -13,6 +13,7 @@ from spacenote.core.core import Service
 from spacenote.core.modules.comment.models import Comment
 from spacenote.core.modules.counter.models import CounterType
 from spacenote.core.modules.export.models import ExportComment, ExportData, ExportNote, ExportSpace
+from spacenote.core.modules.field.models import FieldType
 from spacenote.core.modules.note.models import Note
 from spacenote.core.modules.space.models import Space
 from spacenote.errors import NotFoundError, ValidationError
@@ -72,6 +73,19 @@ class ExportService(Service):
             for note in all_notes.items:
                 # Get username for note creator
                 note_user = self.core.services.user.get_user(note.user_id)
+
+                # Convert USER field UUIDs to usernames
+                exported_fields = dict(note.fields)
+                for field in space.fields:
+                    if field.type == FieldType.USER and field.id in exported_fields and exported_fields[field.id]:
+                        try:
+                            field_user_id = UUID(str(exported_fields[field.id]))
+                            field_user = self.core.services.user.get_user(field_user_id)
+                            exported_fields[field.id] = field_user.username
+                        except (ValueError, NotFoundError):
+                            # Keep the original value if conversion fails
+                            pass
+
                 export_note = ExportNote(
                     number=note.number,
                     username=note_user.username,
@@ -79,7 +93,7 @@ class ExportService(Service):
                     edited_at=note.edited_at,
                     commented_at=note.commented_at,
                     activity_at=note.activity_at,
-                    fields=note.fields,
+                    fields=exported_fields,
                 )
                 export_notes.append(export_note)
 
@@ -290,8 +304,33 @@ class ExportService(Service):
                     )
                     continue
 
-                # Import note directly with its fields (already validated during export)
-                imported_note = await self._import_note(space.id, export_note, user_id)
+                # Convert USER field usernames back to UUIDs
+                imported_fields = dict(export_note.fields)
+                for field in export_data.space.fields:
+                    if field.type == FieldType.USER and field.id in imported_fields and imported_fields[field.id]:
+                        field_value = imported_fields[field.id]
+                        if isinstance(field_value, str):
+                            field_user_id = username_to_id.get(field_value)
+                            if field_user_id:
+                                imported_fields[field.id] = str(field_user_id)
+                            else:
+                                raise ValidationError(
+                                    f"User '{field_value}' not found in field '{field.id}' for note {export_note.number}"
+                                )
+
+                # Create a new ExportNote with converted fields for import
+                converted_note = ExportNote(
+                    number=export_note.number,
+                    username=export_note.username,
+                    created_at=export_note.created_at,
+                    edited_at=export_note.edited_at,
+                    commented_at=export_note.commented_at,
+                    activity_at=export_note.activity_at,
+                    fields=imported_fields,
+                )
+
+                # Import note with converted fields
+                imported_note = await self._import_note(space.id, converted_note, user_id)
                 note_id_map[export_note.number] = imported_note.id
                 max_note_number = max(max_note_number, export_note.number)
 
