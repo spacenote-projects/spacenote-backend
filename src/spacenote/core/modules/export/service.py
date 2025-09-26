@@ -170,7 +170,11 @@ class ExportService(Service):
         return comment
 
     async def import_space(  # noqa: PLR0915
-        self, export_data: ExportData, new_slug: str | None = None, create_missing_users: bool = False
+        self,
+        export_data: ExportData,
+        new_slug: str | None = None,
+        create_missing_users: bool = False,
+        current_user_id: UUID | None = None,
     ) -> Space:
         """Import a space from export data.
 
@@ -211,6 +215,10 @@ class ExportService(Service):
                 else:
                     logger.warning("import_skip_missing_user", username=username, space_slug=slug)
                     continue
+
+        # Add current user to members if not already present
+        if current_user_id and current_user_id not in member_ids:
+            member_ids.append(current_user_id)
 
         if not member_ids:
             raise ValidationError("Cannot import space without any valid members")
