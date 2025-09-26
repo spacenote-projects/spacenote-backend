@@ -74,6 +74,17 @@ class UserService(Service):
         await self._collection.update_one({"_id": user_id}, {"$set": {"password_hash": password_hash}})
         await self.update_user_cache(user_id)
 
+    async def delete_user(self, user_id: UUID) -> None:
+        """Delete a user from the system."""
+        if not self.has_user(user_id):
+            raise NotFoundError(f"User '{user_id}' not found")
+
+        if self.core.services.space.is_user_member_of_any_space(user_id):
+            raise ValidationError("Cannot delete user: member of one or more spaces")
+
+        await self._collection.delete_one({"_id": user_id})
+        del self._users[user_id]
+
     async def ensure_admin_user_exists(self) -> None:
         """Create default admin user if not exists."""
         if not self.has_username("admin"):

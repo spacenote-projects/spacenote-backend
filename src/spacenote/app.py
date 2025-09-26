@@ -12,7 +12,7 @@ from spacenote.core.modules.session.models import AuthToken
 from spacenote.core.modules.space.models import Space
 from spacenote.core.modules.user.models import User, UserView
 from spacenote.core.pagination import PaginationResult
-from spacenote.errors import AuthenticationError
+from spacenote.errors import AuthenticationError, ValidationError
 
 
 class App:
@@ -54,6 +54,16 @@ class App:
         await self._core.services.access.ensure_admin(auth_token)
         user = await self._core.services.user.create_user(username, password)
         return UserView.from_domain(user)
+
+    async def delete_user(self, auth_token: AuthToken, username: str) -> None:
+        """Delete a user (admin only, cannot delete self or users in spaces)."""
+        current_user = await self._core.services.access.ensure_admin(auth_token)
+        user = self._resolve_user(username)
+
+        if user.id == current_user.id:
+            raise ValidationError("Cannot delete yourself")
+
+        await self._core.services.user.delete_user(user.id)
 
     async def get_spaces_by_member(self, auth_token: AuthToken) -> list[Space]:
         """Get spaces where current user is a member."""

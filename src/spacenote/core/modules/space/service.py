@@ -56,6 +56,10 @@ class SpaceService(Service):
         """Get all spaces where the user is a member."""
         return [space for space in self._spaces.values() if member in space.members]
 
+    def is_user_member_of_any_space(self, user_id: UUID) -> bool:
+        """Check if a user is a member of any space."""
+        return any(user_id in space.members for space in self._spaces.values())
+
     def has_slug(self, slug: str) -> bool:
         """Check if a space exists by slug."""
         return any(space.slug == slug for space in self._spaces.values())

@@ -44,3 +44,21 @@ async def list_users(app: AppDep, auth_token: AuthTokenDep) -> list[UserView]:
 )
 async def create_user(create_data: CreateUserRequest, app: AppDep, auth_token: AuthTokenDep) -> UserView:
     return await app.create_user(auth_token, create_data.username, create_data.password)
+
+
+@router.delete(
+    "/users/{username}",
+    summary="Delete user",
+    description="Delete a user account. Only accessible by admin users. Cannot delete users who are members of any space.",
+    operation_id="deleteUser",
+    responses={
+        204: {"description": "User deleted successfully"},
+        400: {"model": ErrorResponse, "description": "Cannot delete user (in spaces or self-deletion)"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Admin privileges required"},
+        404: {"model": ErrorResponse, "description": "User not found"},
+    },
+    status_code=204,
+)
+async def delete_user(username: str, app: AppDep, auth_token: AuthTokenDep) -> None:
+    await app.delete_user(auth_token, username)
