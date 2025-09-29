@@ -10,7 +10,7 @@ from spacenote.core.modules.filter.models import Filter
 from spacenote.core.modules.note.models import Note
 from spacenote.core.modules.session.models import AuthToken
 from spacenote.core.modules.space.models import Space
-from spacenote.core.modules.telegram.models import TelegramIntegration
+from spacenote.core.modules.telegram.models import TelegramEventType, TelegramIntegration, TelegramNotificationConfig
 from spacenote.core.modules.user.models import User, UserView
 from spacenote.core.pagination import PaginationResult
 from spacenote.errors import AuthenticationError, ValidationError
@@ -255,6 +255,41 @@ class App:
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         return await self._core.services.telegram.create_telegram_integration(space.id, bot_token, chat_id)
+
+    async def update_telegram_integration(
+        self,
+        auth_token: AuthToken,
+        space_slug: str,
+        bot_token: str | None = None,
+        chat_id: str | None = None,
+        is_enabled: bool | None = None,
+    ) -> TelegramIntegration:
+        """Update Telegram integration for space (members only).
+
+        Parameters are optional (None) to support partial updates - only fields
+        provided will be updated, while None values are ignored."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.telegram.update_telegram_integration(space.id, bot_token, chat_id, is_enabled)
+
+    async def delete_telegram_integration(self, auth_token: AuthToken, space_slug: str) -> None:
+        """Delete Telegram integration for space (members only)."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        await self._core.services.telegram.delete_telegram_integration(space.id)
+
+    async def update_telegram_notification(
+        self,
+        auth_token: AuthToken,
+        space_slug: str,
+        event_type: TelegramEventType,
+        enabled: bool,
+        template: str,
+    ) -> TelegramNotificationConfig:
+        """Update notification configuration for a specific event type (members only)."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.telegram.update_notification_config(space.id, event_type, enabled, template)
 
     # === Private resolver methods ===
     def _resolve_space(self, slug: str) -> Space:
