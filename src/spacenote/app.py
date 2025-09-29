@@ -1,6 +1,5 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any
 
 from spacenote.config import Config
 from spacenote.core.core import Core
@@ -292,7 +291,7 @@ class App:
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         return await self._core.services.telegram.update_notification_config(space.id, event_type, enabled, template)
 
-    async def test_telegram_integration(self, auth_token: AuthToken, space_slug: str) -> dict[str, Any]:
+    async def test_telegram_integration(self, auth_token: AuthToken, space_slug: str) -> dict[TelegramEventType, str | None]:
         """Test Telegram integration by sending test messages for all enabled events (members only)."""
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)

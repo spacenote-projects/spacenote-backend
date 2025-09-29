@@ -115,14 +115,17 @@ class TelegramService(Service):
         # Return the updated notification config
         return TelegramNotificationConfig(enabled=enabled, template=template)
 
-    async def send_test_message(self, space_id: UUID) -> dict[str, Any]:
+    async def send_test_message(self, space_id: UUID) -> dict[TelegramEventType, str | None]:
         """Send test messages for all enabled notification types.
 
         Tests each enabled event type by generating mock data, rendering
         the configured template, and sending the message to Telegram.
 
         Returns:
-            Dictionary with test results for each event type
+            Dictionary mapping event types to error messages (None if successful)
+
+        Raises:
+            ValidationError: If no notifications are enabled or integration doesn't exist
         """
         integration = await self.get_telegram_integration(space_id)
         if not integration:
@@ -131,24 +134,21 @@ class TelegramService(Service):
         if not integration.is_enabled:
             raise ValidationError("Telegram integration is disabled")
 
+        # Check if at least one notification is enabled
+        enabled_events = [event_type for event_type, config in integration.notifications.items() if config.enabled]
+        if not enabled_events:
+            raise ValidationError("All notification events are disabled")
+
         # Get space for generating mock data
         space = self.core.services.space.get_space(space_id)
         if not space:
             raise ValidationError(f"Space not found: {space_id}")
 
-        results: dict[str, Any] = {"tested_events": []}
-        overall_success = True
+        results: dict[TelegramEventType, str | None] = {}
 
         # Test each enabled notification type
-        for event_type, config in integration.notifications.items():
-            if not config.enabled:
-                continue
-
-            event_result = {
-                "event_type": event_type,
-                "success": False,
-                "error": None,
-            }
+        for event_type in enabled_events:
+            config = integration.notifications[event_type]
 
             try:
                 # Generate appropriate mock context for the event type
@@ -159,18 +159,14 @@ class TelegramService(Service):
                 elif event_type == TelegramEventType.COMMENT_CREATED:
                     context = generate_comment_created_context(space)
                 else:
-                    event_result["error"] = f"Unknown event type: {event_type}"
-                    results["tested_events"].append(event_result)
-                    overall_success = False
+                    results[event_type] = f"Unknown event type: {event_type}"
                     continue
 
                 # Render the template with mock data
                 try:
                     rendered_message = render_telegram_template(config.template, context)
                 except Exception as e:
-                    event_result["error"] = f"Template render error: {e!s}"
-                    results["tested_events"].append(event_result)
-                    overall_success = False
+                    results[event_type] = f"Template render error: {e!s}"
                     continue
 
                 # Add test header to the message
@@ -185,14 +181,10 @@ class TelegramService(Service):
                     parse_mode="HTML",
                 )
 
-                event_result["success"] = success
-                if not success:
-                    event_result["error"] = error_msg
-                    overall_success = False
+                results[event_type] = None if success else error_msg
 
             except Exception as e:
-                event_result["error"] = str(e)
-                overall_success = False
+                results[event_type] = str(e)
                 logger.exception(
                     "test_message_failed",
                     space_id=space_id,
@@ -200,20 +192,11 @@ class TelegramService(Service):
                     error=str(e),
                 )
 
-            results["tested_events"].append(event_result)
-
-        results["overall_success"] = overall_success
-        results["message"] = (
-            f"Successfully tested {len(results['tested_events'])} notification type(s)"
-            if overall_success
-            else "Some test messages failed to send"
-        )
-
         logger.info(
             "test_messages_sent",
             space_id=space_id,
-            tested_count=len(results["tested_events"]),
-            success=overall_success,
+            tested_count=len(results),
+            errors=[event_type for event_type, error in results.items() if error],
         )
 
         return results

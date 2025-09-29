@@ -161,45 +161,20 @@ async def update_telegram_notification(
     return await app.update_telegram_notification(auth_token, space_slug, event_type, request.enabled, request.template)
 
 
-class TestEventResult(BaseModel):
-    """Result from testing a single event type."""
-
-    event_type: str = Field(..., description="The event type that was tested")
-    success: bool = Field(..., description="Whether the test message was sent successfully")
-    error: str | None = Field(None, description="Error details if the test failed")
-
-
-class TestTelegramResponse(BaseModel):
-    """Response from testing Telegram integration."""
-
-    overall_success: bool = Field(..., description="Whether all test messages were sent successfully")
-    message: str = Field(..., description="Summary message of the test results")
-    tested_events: list[TestEventResult] = Field(..., description="Results for each tested event type")
-
-
 @router.post(
     "/spaces/{space_slug}/telegram/test",
     summary="Test Telegram integration",
-    description="Send a test message to verify Telegram integration is working correctly.",
+    description="Send test messages for enabled events. Returns event types mapped to error messages (null if successful).",
     operation_id="testTelegramIntegration",
     responses={
-        200: {"description": "Test result"},
+        200: {"description": "Test result - mapping of event types to error messages"},
         401: {"model": ErrorResponse, "description": "Not authenticated"},
         403: {"model": ErrorResponse, "description": "Not a space member"},
         404: {"model": ErrorResponse, "description": "Space or integration not found"},
+        400: {"model": ErrorResponse, "description": "All notification events are disabled or integration is disabled"},
     },
 )
-async def test_telegram_integration(app: AppDep, auth_token: AuthTokenDep, space_slug: str) -> TestTelegramResponse:
-    result = await app.test_telegram_integration(auth_token, space_slug)
-    return TestTelegramResponse(
-        overall_success=result["overall_success"],
-        message=result["message"],
-        tested_events=[
-            TestEventResult(
-                event_type=event["event_type"],
-                success=event["success"],
-                error=event["error"],
-            )
-            for event in result["tested_events"]
-        ],
-    )
+async def test_telegram_integration(
+    app: AppDep, auth_token: AuthTokenDep, space_slug: str
+) -> dict[TelegramEventType, str | None]:
+    return await app.test_telegram_integration(auth_token, space_slug)

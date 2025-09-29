@@ -37,7 +37,7 @@ class TelegramNotificationConfig(BaseModel):
 NOTE_CREATED_DEFAULT_TEMPLATE = (
     "📝 <b>New note #{{note.number}}</b> in {{space.title}}\n"
     "{% for field_id, value in note.fields %}"
-    "{% if value %}• {{field_id}}: {{value | truncate: 100}}\n{% endif %}"
+    "{% if value %}• {{field_id}}: {{value}}\n{% endif %}"
     "{% endfor %}"
     "👤 {{user.username}}\n"
     "🔗 {{url}}"
@@ -46,14 +46,14 @@ NOTE_CREATED_DEFAULT_TEMPLATE = (
 NOTE_UPDATED_DEFAULT_TEMPLATE = (
     "✏️ <b>Note #{{note.number}} updated</b> in {{space.title}}\n"
     "{% for field_id, value in note.fields %}"
-    "{% if value %}• {{field_id}}: {{value | truncate: 100}}\n{% endif %}"
+    "{% if value %}• {{field_id}}: {{value}}\n{% endif %}"
     "{% endfor %}"
     "👤 {{user.username}}\n"
     "🔗 {{url}}"
 )
 
 COMMENT_CREATED_DEFAULT_TEMPLATE = (
-    "💬 <b>New comment on note #{{note.number}}</b>\n👤 {{user.username}}: {{comment.content | truncate: 200}}\n🔗 {{url}}"
+    "💬 <b>New comment on note #{{note.number}}</b>\n👤 {{user.username}}: {{comment.content}}\n🔗 {{url}}"
 )
 
 
