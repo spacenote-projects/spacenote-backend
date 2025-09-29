@@ -6,6 +6,10 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from spacenote.core.db import MongoModel
+from spacenote.core.modules.comment.models import Comment
+from spacenote.core.modules.note.models import Note
+from spacenote.core.modules.space.models import Space
+from spacenote.core.modules.user.models import UserView
 
 
 class TelegramEventType(StrEnum):
@@ -36,8 +40,8 @@ class TelegramNotificationConfig(BaseModel):
 # Default templates for each event type
 NOTE_CREATED_DEFAULT_TEMPLATE = (
     "📝 <b>New note #{{note.number}}</b> in {{space.title}}\n"
-    "{% for field_id, value in note.fields %}"
-    "{% if value %}• {{field_id}}: {{value}}\n{% endif %}"
+    "{% for field in note.fields %}"
+    "{% if field[1] %}• {{field[0]}}: {{field[1]}}\n{% endif %}"
     "{% endfor %}"
     "👤 {{user.username}}\n"
     "🔗 {{url}}"
@@ -45,8 +49,8 @@ NOTE_CREATED_DEFAULT_TEMPLATE = (
 
 NOTE_UPDATED_DEFAULT_TEMPLATE = (
     "✏️ <b>Note #{{note.number}} updated</b> in {{space.title}}\n"
-    "{% for field_id, value in note.fields %}"
-    "{% if value %}• {{field_id}}: {{value}}\n{% endif %}"
+    "{% for field in note.fields %}"
+    "{% if field[1] %}• {{field[0]}}: {{field[1]}}\n{% endif %}"
     "{% endfor %}"
     "👤 {{user.username}}\n"
     "🔗 {{url}}"
@@ -73,6 +77,38 @@ def get_default_notifications() -> dict[TelegramEventType, TelegramNotificationC
             template=COMMENT_CREATED_DEFAULT_TEMPLATE,
         ),
     }
+
+
+class NoteCreatedContext(BaseModel):
+    """Template context for NOTE_CREATED event."""
+
+    note: Note
+    user: UserView
+    space: Space
+    url: str = Field(..., description="Direct link to the created note")
+
+
+class NoteUpdatedContext(BaseModel):
+    """Template context for NOTE_UPDATED event."""
+
+    note: Note
+    user: UserView
+    space: Space
+    url: str = Field(..., description="Direct link to the updated note")
+
+
+class CommentCreatedContext(BaseModel):
+    """Template context for COMMENT_CREATED event."""
+
+    note: Note
+    comment: Comment
+    user: UserView
+    space: Space
+    url: str = Field(..., description="Direct link to the comment")
+
+
+TelegramTemplateContext = NoteCreatedContext | NoteUpdatedContext | CommentCreatedContext
+"""Union type for all possible Telegram template contexts."""
 
 
 class TelegramIntegration(MongoModel):

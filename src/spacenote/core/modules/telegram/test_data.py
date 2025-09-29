@@ -1,10 +1,17 @@
 """Mock data generator for testing Telegram notifications."""
 
-from typing import Any
 from uuid import uuid4
 
+from spacenote.core.modules.comment.models import Comment
 from spacenote.core.modules.field.models import FieldOption, FieldType, FieldValueType
+from spacenote.core.modules.note.models import Note
 from spacenote.core.modules.space.models import Space
+from spacenote.core.modules.telegram.models import (
+    CommentCreatedContext,
+    NoteCreatedContext,
+    NoteUpdatedContext,
+)
+from spacenote.core.modules.user.models import UserView
 from spacenote.utils import now
 
 
@@ -46,7 +53,7 @@ def generate_mock_note_fields(space: Space) -> dict[str, FieldValueType]:
     return mock_fields
 
 
-def generate_note_created_context(space: Space) -> dict[str, Any]:
+def generate_note_created_context(space: Space) -> NoteCreatedContext:
     """Generate context for NOTE_CREATED event testing.
 
     Args:
@@ -58,26 +65,30 @@ def generate_note_created_context(space: Space) -> dict[str, Any]:
     mock_fields = generate_mock_note_fields(space)
     test_time = now()
 
-    return {
-        "note": {
-            "number": 9999,
-            "fields": mock_fields,
-            "created_at": test_time.isoformat(),
-            "edited_at": None,
-            "activity_at": test_time.isoformat(),
-        },
-        "user": {
-            "username": "test_user",
-        },
-        "space": {
-            "title": space.title,
-            "slug": space.slug,
-        },
-        "url": f"https://spacenote.app/spaces/{space.slug}/notes/9999",
-    }
+    # Create a mock note
+    note = Note(
+        id=uuid4(),
+        space_id=space.id,
+        number=9999,
+        user_id=uuid4(),
+        fields=mock_fields,
+        created_at=test_time,
+        edited_at=None,
+        activity_at=test_time,
+    )
+
+    # Create a mock user
+    user = UserView(id=uuid4(), username="test_user")
+
+    return NoteCreatedContext(
+        note=note,
+        user=user,
+        space=space,
+        url=f"https://spacenote.app/spaces/{space.slug}/notes/9999",
+    )
 
 
-def generate_note_updated_context(space: Space) -> dict[str, Any]:
+def generate_note_updated_context(space: Space) -> NoteUpdatedContext:
     """Generate context for NOTE_UPDATED event testing.
 
     Args:
@@ -90,26 +101,30 @@ def generate_note_updated_context(space: Space) -> dict[str, Any]:
     created_time = now()
     edited_time = now()
 
-    return {
-        "note": {
-            "number": 9999,
-            "fields": mock_fields,
-            "created_at": created_time.isoformat(),
-            "edited_at": edited_time.isoformat(),
-            "activity_at": edited_time.isoformat(),
-        },
-        "user": {
-            "username": "test_user",
-        },
-        "space": {
-            "title": space.title,
-            "slug": space.slug,
-        },
-        "url": f"https://spacenote.app/spaces/{space.slug}/notes/9999",
-    }
+    # Create a mock note with edit timestamp
+    note = Note(
+        id=uuid4(),
+        space_id=space.id,
+        number=9999,
+        user_id=uuid4(),
+        fields=mock_fields,
+        created_at=created_time,
+        edited_at=edited_time,
+        activity_at=edited_time,
+    )
+
+    # Create a mock user
+    user = UserView(id=uuid4(), username="test_user")
+
+    return NoteUpdatedContext(
+        note=note,
+        user=user,
+        space=space,
+        url=f"https://spacenote.app/spaces/{space.slug}/notes/9999",
+    )
 
 
-def generate_comment_created_context(space: Space) -> dict[str, Any]:
+def generate_comment_created_context(space: Space) -> CommentCreatedContext:
     """Generate context for COMMENT_CREATED event testing.
 
     Args:
@@ -120,24 +135,37 @@ def generate_comment_created_context(space: Space) -> dict[str, Any]:
     """
     mock_fields = generate_mock_note_fields(space)
     test_time = now()
+    note_id = uuid4()
 
-    return {
-        "note": {
-            "number": 9999,
-            "fields": mock_fields,
-        },
-        "comment": {
-            "content": "This is a test comment for notification testing. "
-            "It demonstrates how your comment notifications will appear.",
-            "number": 1,
-            "created_at": test_time.isoformat(),
-        },
-        "user": {
-            "username": "test_user",
-        },
-        "space": {
-            "title": space.title,
-            "slug": space.slug,
-        },
-        "url": f"https://spacenote.app/spaces/{space.slug}/notes/9999#comment-1",
-    }
+    # Create a mock note
+    note = Note(
+        id=note_id,
+        space_id=space.id,
+        number=9999,
+        user_id=uuid4(),
+        fields=mock_fields,
+        created_at=test_time,
+        activity_at=test_time,
+    )
+
+    # Create a mock comment
+    comment = Comment(
+        id=uuid4(),
+        note_id=note_id,
+        space_id=space.id,
+        user_id=uuid4(),
+        number=1,
+        content="This is a test comment for notification testing. It demonstrates how your comment notifications will appear.",
+        created_at=test_time,
+    )
+
+    # Create a mock user
+    user = UserView(id=uuid4(), username="test_user")
+
+    return CommentCreatedContext(
+        note=note,
+        comment=comment,
+        user=user,
+        space=space,
+        url=f"https://spacenote.app/spaces/{space.slug}/notes/9999#comment-1",
+    )

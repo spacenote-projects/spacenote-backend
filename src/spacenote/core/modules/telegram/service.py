@@ -5,7 +5,12 @@ import structlog
 from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
-from spacenote.core.modules.telegram.models import TelegramEventType, TelegramIntegration, TelegramNotificationConfig
+from spacenote.core.modules.telegram.models import (
+    TelegramEventType,
+    TelegramIntegration,
+    TelegramNotificationConfig,
+    TelegramTemplateContext,
+)
 from spacenote.core.modules.telegram.renderer import render_telegram_template
 from spacenote.core.modules.telegram.sender import send_telegram_message
 from spacenote.core.modules.telegram.test_data import (
@@ -152,6 +157,7 @@ class TelegramService(Service):
 
             try:
                 # Generate appropriate mock context for the event type
+                context: TelegramTemplateContext
                 if event_type == TelegramEventType.NOTE_CREATED:
                     context = generate_note_created_context(space)
                 elif event_type == TelegramEventType.NOTE_UPDATED:
