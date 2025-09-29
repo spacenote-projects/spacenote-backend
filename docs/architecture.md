@@ -29,7 +29,8 @@ spacenote-backend/
 │   │   │   ├── access/       # Access control
 │   │   │   ├── counter/      # ID generation
 │   │   │   ├── filter/       # Query filters
-│   │   │   └── export/       # CSV/JSON export functionality
+│   │   │   ├── export/       # CSV/JSON export functionality
+│   │   │   └── telegram/     # Telegram bot integration
 │   │   ├── core.py           # Core container & DI
 │   │   ├── db.py             # Database utilities
 │   │   └── pagination.py     # Pagination utilities
@@ -44,7 +45,8 @@ spacenote-backend/
 │   │   │   ├── fields.py     # Field management endpoints
 │   │   │   ├── filters.py    # Filter management endpoints
 │   │   │   ├── metadata.py   # Metadata endpoints
-│   │   │   └── profile.py    # User profile endpoints
+│   │   │   ├── profile.py    # User profile endpoints
+│   │   │   └── telegram.py   # Telegram integration endpoints
 │   │   ├── deps.py           # FastAPI dependencies
 │   │   ├── server.py         # FastAPI app setup
 │   │   ├── error_handlers.py # Global error handling

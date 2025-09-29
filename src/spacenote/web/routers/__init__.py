@@ -7,6 +7,7 @@ from spacenote.web.routers.metadata import router as metadata_router
 from spacenote.web.routers.notes import router as notes_router
 from spacenote.web.routers.profile import router as profile_router
 from spacenote.web.routers.spaces import router as spaces_router
+from spacenote.web.routers.telegram import router as telegram_router
 from spacenote.web.routers.users import router as users_router
 
 __all__ = [
@@ -19,5 +20,6 @@ __all__ = [
     "notes_router",
     "profile_router",
     "spaces_router",
+    "telegram_router",
     "users_router",
 ]

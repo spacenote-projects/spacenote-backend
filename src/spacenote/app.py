@@ -10,6 +10,7 @@ from spacenote.core.modules.filter.models import Filter
 from spacenote.core.modules.note.models import Note
 from spacenote.core.modules.session.models import AuthToken
 from spacenote.core.modules.space.models import Space
+from spacenote.core.modules.telegram.models import TelegramIntegration
 from spacenote.core.modules.user.models import User, UserView
 from spacenote.core.pagination import PaginationResult
 from spacenote.errors import AuthenticationError, ValidationError
@@ -239,6 +240,21 @@ class App:
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         await self._core.services.filter.remove_filter_from_space(space.id, filter_id)
+
+    # === Telegram integration ===
+    async def get_telegram_integration(self, auth_token: AuthToken, space_slug: str) -> TelegramIntegration | None:
+        """Get Telegram integration for space (members only)."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.telegram.get_telegram_integration(space.id)
+
+    async def create_telegram_integration(
+        self, auth_token: AuthToken, space_slug: str, bot_token: str, chat_id: str
+    ) -> TelegramIntegration:
+        """Create Telegram integration for space (members only)."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.telegram.create_telegram_integration(space.id, bot_token, chat_id)
 
     # === Private resolver methods ===
     def _resolve_space(self, slug: str) -> Space:

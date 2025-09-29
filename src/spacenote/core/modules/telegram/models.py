@@ -1,7 +1,6 @@
 """Telegram integration models for space notifications."""
 
 from enum import StrEnum
-from typing import ClassVar
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -34,6 +33,48 @@ class TelegramNotificationConfig(BaseModel):
     template: str = Field(..., description="Liquid template for formatting the notification message")
 
 
+# Default templates for each event type
+NOTE_CREATED_DEFAULT_TEMPLATE = (
+    "📝 <b>New note #{{note.number}}</b> in {{space.title}}\n"
+    "{% for field_id, value in note.fields %}"
+    "{% if value %}• {{field_id}}: {{value | truncate: 100}}\n{% endif %}"
+    "{% endfor %}"
+    "👤 {{user.username}}\n"
+    "🔗 {{url}}"
+)
+
+NOTE_UPDATED_DEFAULT_TEMPLATE = (
+    "✏️ <b>Note #{{note.number}} updated</b> in {{space.title}}\n"
+    "{% for field_id, value in note.fields %}"
+    "{% if value %}• {{field_id}}: {{value | truncate: 100}}\n{% endif %}"
+    "{% endfor %}"
+    "👤 {{user.username}}\n"
+    "🔗 {{url}}"
+)
+
+COMMENT_CREATED_DEFAULT_TEMPLATE = (
+    "💬 <b>New comment on note #{{note.number}}</b>\n👤 {{user.username}}: {{comment.content | truncate: 200}}\n🔗 {{url}}"
+)
+
+
+def get_default_notifications() -> dict[TelegramEventType, TelegramNotificationConfig]:
+    """Get default notification configurations for all event types."""
+    return {
+        TelegramEventType.NOTE_CREATED: TelegramNotificationConfig(
+            enabled=True,
+            template=NOTE_CREATED_DEFAULT_TEMPLATE,
+        ),
+        TelegramEventType.NOTE_UPDATED: TelegramNotificationConfig(
+            enabled=True,
+            template=NOTE_UPDATED_DEFAULT_TEMPLATE,
+        ),
+        TelegramEventType.COMMENT_CREATED: TelegramNotificationConfig(
+            enabled=True,
+            template=COMMENT_CREATED_DEFAULT_TEMPLATE,
+        ),
+    }
+
+
 class TelegramIntegration(MongoModel):
     """Telegram bot integration configuration for a space.
 
@@ -62,41 +103,5 @@ class TelegramIntegration(MongoModel):
     chat_id: str = Field(..., description="Telegram chat ID (can be numeric ID or @username for public channels)")
     is_enabled: bool = Field(True, description="Global on/off switch for all notifications")
     notifications: dict[TelegramEventType, TelegramNotificationConfig] = Field(
-        default_factory=dict, description="Notification configuration for each event type"
+        default_factory=get_default_notifications, description="Notification configuration for each event type"
     )
-
-    DEFAULT_TEMPLATES: ClassVar[dict[TelegramEventType, str]] = {
-        TelegramEventType.NOTE_CREATED: (
-            "📝 <b>New note #{{note.number}}</b> in {{space.title}}\n"
-            "{% for field_id, value in note.fields %}"
-            "{% if value %}• {{field_id}}: {{value | truncate: 100}}\n{% endif %}"
-            "{% endfor %}"
-            "👤 {{user.username}}\n"
-            "🔗 {{url}}"
-        ),
-        TelegramEventType.NOTE_UPDATED: (
-            "✏️ <b>Note #{{note.number}} updated</b> in {{space.title}}\n"
-            "{% for field_id, value in note.fields %}"
-            "{% if value %}• {{field_id}}: {{value | truncate: 100}}\n{% endif %}"
-            "{% endfor %}"
-            "👤 {{user.username}}\n"
-            "🔗 {{url}}"
-        ),
-        TelegramEventType.COMMENT_CREATED: (
-            "💬 <b>New comment on note #{{note.number}}</b>\n"
-            "👤 {{user.username}}: {{comment.content | truncate: 200}}\n"
-            "🔗 {{url}}"
-        ),
-    }
-
-    @classmethod
-    def get_default_template(cls, event_type: TelegramEventType) -> str:
-        """Get the default Liquid template for a given event type.
-
-        Args:
-            event_type: The type of event to get template for
-
-        Returns:
-            Default Liquid template string with HTML formatting for Telegram
-        """
-        return cls.DEFAULT_TEMPLATES.get(event_type, "{{space.title}}: {{url}}")

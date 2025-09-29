@@ -20,6 +20,7 @@ from spacenote.web.routers import (
     notes_router,
     profile_router,
     spaces_router,
+    telegram_router,
     users_router,
 )
 
@@ -67,6 +68,7 @@ def create_fastapi_app(app_instance: App, config: Config) -> FastAPI:
     app.include_router(notes_router, prefix="/api/v1")
     app.include_router(comments_router, prefix="/api/v1")
     app.include_router(export_router, prefix="/api/v1")
+    app.include_router(telegram_router, prefix="/api/v1")
     app.include_router(users_router, prefix="/api/v1")
     app.include_router(metadata_router)
 
