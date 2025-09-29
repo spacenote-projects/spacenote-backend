@@ -35,20 +35,20 @@ class TelegramNotificationConfig(BaseModel):
 
 # Default templates for each event type
 NOTE_CREATED_DEFAULT_TEMPLATE = (
-    "📝 <b>New note #{{note.number}}</b> in {{space.title}}\n\n"
-    "{% if note.fields.title %}<b>{{note.fields.title}}</b>\n{% endif %}"
-    "{% if note.fields.status %}Status: {{note.fields.status}}\n{% endif %}"
-    "{% if note.fields.priority %}Priority: {{note.fields.priority}}\n{% endif %}"
-    "\n👤 Created by {{user.username}}\n"
+    "📝 <b>New note #{{note.number}}</b> in {{space.title}}\n"
+    "{% for field_id, value in note.fields %}"
+    "{% if value %}• {{field_id}}: {{value | truncate: 100}}\n{% endif %}"
+    "{% endfor %}"
+    "👤 {{user.username}}\n"
     "🔗 {{url}}"
 )
 
 NOTE_UPDATED_DEFAULT_TEMPLATE = (
-    "✏️ <b>Note #{{note.number}} updated</b> in {{space.title}}\n\n"
-    "{% if note.fields.title %}<b>{{note.fields.title}}</b>\n{% endif %}"
-    "{% if note.fields.status %}Status: {{note.fields.status}}\n{% endif %}"
-    "{% if note.fields.priority %}Priority: {{note.fields.priority}}\n{% endif %}"
-    "\n👤 Updated by {{user.username}}\n"
+    "✏️ <b>Note #{{note.number}} updated</b> in {{space.title}}\n"
+    "{% for field_id, value in note.fields %}"
+    "{% if value %}• {{field_id}}: {{value | truncate: 100}}\n{% endif %}"
+    "{% endfor %}"
+    "👤 {{user.username}}\n"
     "🔗 {{url}}"
 )
 
