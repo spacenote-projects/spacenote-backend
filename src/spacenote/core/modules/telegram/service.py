@@ -5,6 +5,7 @@ import structlog
 from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
+from spacenote.core.modules.comment.models import Comment
 from spacenote.core.modules.field.models import FieldType
 from spacenote.core.modules.note.models import Note
 from spacenote.core.modules.space.models import Space
@@ -24,6 +25,8 @@ from spacenote.core.modules.telegram.test_data import (
     generate_note_created_context,
     generate_note_updated_context,
 )
+from spacenote.core.modules.telegram.utils import generate_comment_url, generate_note_url
+from spacenote.core.modules.user.models import UserView
 from spacenote.errors import NotFoundError, ValidationError
 
 logger = structlog.get_logger(__name__)
@@ -304,3 +307,266 @@ class TelegramService(Service):
         )
 
         return results
+
+    async def send_note_created_notification(
+        self,
+        note: Note,
+        user_id: UUID,
+        space_id: UUID,
+    ) -> None:
+        """Send notification when a note is created.
+
+        This is a fire-and-forget operation that logs errors but doesn't
+        raise exceptions to avoid disrupting the main operation.
+
+        Args:
+            note: The created note
+            user_id: ID of the user who created the note
+            space_id: ID of the space containing the note
+        """
+        try:
+            # Get integration for the space
+            integration = await self.get_telegram_integration(space_id)
+            if not integration or not integration.is_enabled:
+                return
+
+            # Check if note_created notifications are enabled
+            event_config = integration.notifications.get(TelegramEventType.NOTE_CREATED)
+            if not event_config or not event_config.enabled:
+                return
+
+            # Get space and user for context
+            space = self.core.services.space.get_space(space_id)
+            if not space:
+                logger.warning("space_not_found_for_notification", space_id=space_id)
+                return
+
+            user = self.core.services.user.get_user(user_id)
+            if not user:
+                logger.warning("user_not_found_for_notification", user_id=user_id)
+                return
+
+            # Generate note URL
+            frontend_url = self.core.config.frontend_url
+            note_url = generate_note_url(frontend_url, space.slug, note.number)
+
+            # Create context for template
+            context = NoteCreatedContext(
+                note=note,
+                user=UserView.from_domain(user),
+                space=space,
+                url=note_url,
+            )
+
+            # Prepare and render template
+            prepared_context = self._prepare_context_for_template(context)
+            rendered_message = render_telegram_template(event_config.template, prepared_context)
+
+            # Send the notification
+            success, error_msg = await send_telegram_message(
+                integration.bot_token,
+                integration.chat_id,
+                rendered_message,
+                parse_mode="HTML",
+            )
+
+            if success:
+                logger.info(
+                    "note_created_notification_sent",
+                    space_id=space_id,
+                    note_id=note.id,
+                    note_number=note.number,
+                )
+            else:
+                logger.warning(
+                    "note_created_notification_failed",
+                    space_id=space_id,
+                    note_id=note.id,
+                    error=error_msg,
+                )
+
+        except Exception as e:
+            # Log error but don't propagate - notifications should never fail main operations
+            logger.exception(
+                "note_created_notification_error",
+                space_id=space_id,
+                note_id=note.id,
+                error=str(e),
+            )
+
+    async def send_note_updated_notification(
+        self,
+        note: Note,
+        user_id: UUID,
+        space_id: UUID,
+    ) -> None:
+        """Send notification when a note is updated.
+
+        This is a fire-and-forget operation that logs errors but doesn't
+        raise exceptions to avoid disrupting the main operation.
+
+        Args:
+            note: The updated note
+            user_id: ID of the user who updated the note
+            space_id: ID of the space containing the note
+        """
+        try:
+            # Get integration for the space
+            integration = await self.get_telegram_integration(space_id)
+            if not integration or not integration.is_enabled:
+                return
+
+            # Check if note_updated notifications are enabled
+            event_config = integration.notifications.get(TelegramEventType.NOTE_UPDATED)
+            if not event_config or not event_config.enabled:
+                return
+
+            # Get space and user for context
+            space = self.core.services.space.get_space(space_id)
+            if not space:
+                logger.warning("space_not_found_for_notification", space_id=space_id)
+                return
+
+            user = self.core.services.user.get_user(user_id)
+            if not user:
+                logger.warning("user_not_found_for_notification", user_id=user_id)
+                return
+
+            # Generate note URL
+            frontend_url = self.core.config.frontend_url
+            note_url = generate_note_url(frontend_url, space.slug, note.number)
+
+            # Create context for template
+            context = NoteUpdatedContext(
+                note=note,
+                user=UserView.from_domain(user),
+                space=space,
+                url=note_url,
+            )
+
+            # Prepare and render template
+            prepared_context = self._prepare_context_for_template(context)
+            rendered_message = render_telegram_template(event_config.template, prepared_context)
+
+            # Send the notification
+            success, error_msg = await send_telegram_message(
+                integration.bot_token,
+                integration.chat_id,
+                rendered_message,
+                parse_mode="HTML",
+            )
+
+            if success:
+                logger.info(
+                    "note_updated_notification_sent",
+                    space_id=space_id,
+                    note_id=note.id,
+                    note_number=note.number,
+                )
+            else:
+                logger.warning(
+                    "note_updated_notification_failed",
+                    space_id=space_id,
+                    note_id=note.id,
+                    error=error_msg,
+                )
+
+        except Exception as e:
+            # Log error but don't propagate - notifications should never fail main operations
+            logger.exception(
+                "note_updated_notification_error",
+                space_id=space_id,
+                note_id=note.id,
+                error=str(e),
+            )
+
+    async def send_comment_created_notification(
+        self,
+        comment: Comment,
+        note: Note,
+        user_id: UUID,
+        space_id: UUID,
+    ) -> None:
+        """Send notification when a comment is created.
+
+        This is a fire-and-forget operation that logs errors but doesn't
+        raise exceptions to avoid disrupting the main operation.
+
+        Args:
+            comment: The created comment
+            note: The note containing the comment
+            user_id: ID of the user who created the comment
+            space_id: ID of the space containing the note
+        """
+        try:
+            # Get integration for the space
+            integration = await self.get_telegram_integration(space_id)
+            if not integration or not integration.is_enabled:
+                return
+
+            # Check if comment_created notifications are enabled
+            event_config = integration.notifications.get(TelegramEventType.COMMENT_CREATED)
+            if not event_config or not event_config.enabled:
+                return
+
+            # Get space and user for context
+            space = self.core.services.space.get_space(space_id)
+            if not space:
+                logger.warning("space_not_found_for_notification", space_id=space_id)
+                return
+
+            user = self.core.services.user.get_user(user_id)
+            if not user:
+                logger.warning("user_not_found_for_notification", user_id=user_id)
+                return
+
+            # Generate comment URL
+            frontend_url = self.core.config.frontend_url
+            comment_url = generate_comment_url(frontend_url, space.slug, note.number, comment.number)
+
+            # Create context for template
+            context = CommentCreatedContext(
+                note=note,
+                comment=comment,
+                user=UserView.from_domain(user),
+                space=space,
+                url=comment_url,
+            )
+
+            # Prepare and render template
+            prepared_context = self._prepare_context_for_template(context)
+            rendered_message = render_telegram_template(event_config.template, prepared_context)
+
+            # Send the notification
+            success, error_msg = await send_telegram_message(
+                integration.bot_token,
+                integration.chat_id,
+                rendered_message,
+                parse_mode="HTML",
+            )
+
+            if success:
+                logger.info(
+                    "comment_created_notification_sent",
+                    space_id=space_id,
+                    note_id=note.id,
+                    comment_id=comment.id,
+                )
+            else:
+                logger.warning(
+                    "comment_created_notification_failed",
+                    space_id=space_id,
+                    note_id=note.id,
+                    comment_id=comment.id,
+                    error=error_msg,
+                )
+
+        except Exception as e:
+            # Log error but don't propagate - notifications should never fail main operations
+            logger.exception(
+                "comment_created_notification_error",
+                space_id=space_id,
+                note_id=note.id if note else None,
+                comment_id=comment.id if comment else None,
+                error=str(e),
+            )

@@ -44,4 +44,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **NEVER kill or interact with port 3100** - This port is reserved for human developers only!
 - **Always use port 3101 for agent testing** - The `just agent-start` command automatically uses port 3101
+- **NEVER disable linter checks without explicit permission** - If a linter warning appears (like RUF006 for asyncio.create_task), you must either:
+  1. Fix the issue properly (e.g., store the task reference)
+  2. Explain the specific reason why the check needs to be disabled and ask for permission
+  - Never silently add `# noqa` comments without explanation
 

@@ -10,6 +10,7 @@ class Config(BaseSettings):
     debug: bool
     session_secret_key: str
     cors_origins: list[str] = []
+    frontend_url: str  # URL of the frontend application, e.g. https://spacenote.app
 
     model_config = {
         "env_file": [".env"],

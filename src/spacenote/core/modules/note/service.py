@@ -1,3 +1,5 @@
+import asyncio
+from collections.abc import Coroutine
 from typing import Any
 from uuid import UUID
 
@@ -25,9 +27,17 @@ class NoteService(Service):
         """Create indexes for space/number lookup and sorting."""
         await self._collection.create_index([("space_id", 1), ("number", 1)], unique=True)
         await self._collection.create_index([("space_id", 1)])
-        await self._collection.create_index([("created_at", -1)])
-        await self._collection.create_index([("activity_at", -1)])
-        await self._collection.create_index([("commented_at", -1)])
+        self._notification_tasks: set[asyncio.Task[None]] = set()
+
+    def _send_telegram_notification_async(self, coro: Coroutine[Any, Any, None]) -> None:
+        """Send Telegram notification without blocking.
+
+        Creates a background task and keeps a reference to avoid garbage collection.
+        Tasks are automatically cleaned up when completed.
+        """
+        task: asyncio.Task[None] = asyncio.create_task(coro)
+        self._notification_tasks.add(task)
+        task.add_done_callback(self._notification_tasks.discard)
 
     async def list_notes(
         self, space_id: UUID, limit: int = 50, offset: int = 0, filter_id: str | None = None, current_user_id: UUID | None = None
@@ -115,7 +125,18 @@ class NoteService(Service):
                 fields=parsed_fields,
             ).to_mongo()
         )
-        return await self.get_note(res.inserted_id)
+        note = await self.get_note(res.inserted_id)
+
+        # Send Telegram notification in the background
+        self._send_telegram_notification_async(
+            self.core.services.telegram.send_note_created_notification(
+                note=note,
+                user_id=user_id,
+                space_id=space_id,
+            )
+        )
+
+        return note
 
     async def update_note_fields(self, note_id: UUID, raw_fields: dict[str, str], current_user_id: UUID | None = None) -> Note:
         """Update specific note fields with validation (partial update).
@@ -143,7 +164,19 @@ class NoteService(Service):
 
         await self._collection.update_one({"_id": note_id}, {"$set": update_doc})
 
-        return await self.get_note(note_id)
+        updated_note = await self.get_note(note_id)
+
+        # Send Telegram notification in the background if we have user context
+        if current_user_id:
+            self._send_telegram_notification_async(
+                self.core.services.telegram.send_note_updated_notification(
+                    note=updated_note,
+                    user_id=current_user_id,
+                    space_id=updated_note.space_id,
+                )
+            )
+
+        return updated_note
 
     async def delete_notes_by_space(self, space_id: UUID) -> int:
         """Delete all notes in a space and return count of deleted notes."""
