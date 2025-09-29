@@ -5,12 +5,13 @@ description = "Flexible note-taking system with customizable spaces"
 requires-python = ">=3.13"
 dependencies = [
     "bcrypt~=5.0.0",
-    "fastapi[standard]~=0.117.1",
+    "fastapi[standard]~=0.118.0",
     "itsdangerous~=2.2.0",
     "pydantic-settings~=2.11.0",
     "pymongo~=4.15.1",
     "python-dotenv~=1.1.1",
     "python-liquid>=2.1.0",
+    "python-telegram-bot~=22.5",
     "structlog~=25.4.0",
 ]
 

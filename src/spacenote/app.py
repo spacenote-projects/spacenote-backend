@@ -291,6 +291,12 @@ class App:
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         return await self._core.services.telegram.update_notification_config(space.id, event_type, enabled, template)
 
+    async def test_telegram_integration(self, auth_token: AuthToken, space_slug: str) -> tuple[bool, str | None]:
+        """Test Telegram integration by sending a test message (members only)."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.telegram.send_test_message(space.id)
+
     # === Private resolver methods ===
     def _resolve_space(self, slug: str) -> Space:
         """Resolve space slug to Space object. Raises NotFoundError if not found."""

@@ -6,6 +6,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
 from spacenote.core.modules.telegram.models import TelegramEventType, TelegramIntegration, TelegramNotificationConfig
+from spacenote.core.modules.telegram.sender import send_telegram_message
 from spacenote.errors import ValidationError
 
 logger = structlog.get_logger(__name__)
@@ -107,3 +108,22 @@ class TelegramService(Service):
 
         # Return the updated notification config
         return TelegramNotificationConfig(enabled=enabled, template=template)
+
+    async def send_test_message(self, space_id: UUID) -> tuple[bool, str | None]:
+        """Send a test message to verify Telegram integration works.
+
+        Returns:
+            Tuple of (success, error_message)
+        """
+        integration = await self.get_telegram_integration(space_id)
+        if not integration:
+            raise ValidationError(f"Telegram integration not found for space {space_id}")
+
+        if not integration.is_enabled:
+            raise ValidationError("Telegram integration is disabled")
+
+        # Send simple test message
+        test_message = "Test message from SpaceNote"
+        success, error_msg = await send_telegram_message(integration.bot_token, integration.chat_id, test_message)
+        logger.debug("send_test_message", space_id=space_id, success=success, error=error_msg)
+        return success, error_msg

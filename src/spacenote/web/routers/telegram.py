@@ -159,3 +159,30 @@ async def update_telegram_notification(
     request: UpdateNotificationRequest,
 ) -> TelegramNotificationConfig:
     return await app.update_telegram_notification(auth_token, space_slug, event_type, request.enabled, request.template)
+
+
+class TestTelegramResponse(BaseModel):
+    """Response from testing Telegram integration."""
+
+    success: bool = Field(..., description="Whether the test message was sent successfully")
+    error: str | None = Field(None, description="Error details if the test failed")
+
+
+@router.post(
+    "/spaces/{space_slug}/telegram/test",
+    summary="Test Telegram integration",
+    description="Send a test message to verify Telegram integration is working correctly.",
+    operation_id="testTelegramIntegration",
+    responses={
+        200: {"description": "Test result"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Not a space member"},
+        404: {"model": ErrorResponse, "description": "Space or integration not found"},
+    },
+)
+async def test_telegram_integration(app: AppDep, auth_token: AuthTokenDep, space_slug: str) -> TestTelegramResponse:
+    success, error_msg = await app.test_telegram_integration(auth_token, space_slug)
+    return TestTelegramResponse(
+        success=success,
+        error=error_msg,
+    )
