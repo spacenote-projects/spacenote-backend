@@ -1,5 +1,3 @@
-import asyncio
-from collections.abc import Coroutine
 from typing import Any
 from uuid import UUID
 
@@ -26,17 +24,6 @@ class CommentService(Service):
         await self._collection.create_index([("note_id", 1), ("number", 1)], unique=True)
         await self._collection.create_index([("note_id", 1)])
         await self._collection.create_index([("created_at", 1)])
-        self._notification_tasks: set[asyncio.Task[None]] = set()
-
-    def _send_telegram_notification_async(self, coro: Coroutine[Any, Any, None]) -> None:
-        """Send Telegram notification without blocking.
-
-        Creates a background task and keeps a reference to avoid garbage collection.
-        Tasks are automatically cleaned up when completed.
-        """
-        task: asyncio.Task[None] = asyncio.create_task(coro)
-        self._notification_tasks.add(task)
-        task.add_done_callback(self._notification_tasks.discard)
 
     async def create_comment(self, note_id: UUID, space_id: UUID, user_id: UUID, content: str) -> Comment:
         """Create comment with auto-increment number per note."""
@@ -61,13 +48,11 @@ class CommentService(Service):
         note = await self.core.services.note.get_note(note_id)
 
         # Send Telegram notification in the background
-        self._send_telegram_notification_async(
-            self.core.services.telegram.send_comment_created_notification(
-                comment=comment,
-                note=note,
-                user_id=user_id,
-                space_id=space_id,
-            )
+        self.core.services.telegram.send_comment_created_notification(
+            comment=comment,
+            note=note,
+            user_id=user_id,
+            space_id=space_id,
         )
 
         return comment

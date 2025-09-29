@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any
 from uuid import UUID
 
@@ -41,6 +42,7 @@ class TelegramService(Service):
 
     async def on_start(self) -> None:
         await self._collection.create_index([("space_id", 1)], unique=True)
+        self._notification_tasks: set[asyncio.Task[None]] = set()
         logger.debug("telegram_service_started")
 
     def _prepare_fields_for_template(self, note: Note, space: Space) -> dict[str, Any]:
@@ -308,7 +310,7 @@ class TelegramService(Service):
 
         return results
 
-    async def send_note_created_notification(
+    def send_note_created_notification(
         self,
         note: Note,
         user_id: UUID,
@@ -316,14 +318,26 @@ class TelegramService(Service):
     ) -> None:
         """Send notification when a note is created.
 
-        This is a fire-and-forget operation that logs errors but doesn't
-        raise exceptions to avoid disrupting the main operation.
+        This is a fire-and-forget operation that creates a background task
+        and logs errors but doesn't raise exceptions to avoid disrupting
+        the main operation.
 
         Args:
             note: The created note
             user_id: ID of the user who created the note
             space_id: ID of the space containing the note
         """
+        task = asyncio.create_task(self._send_note_created_notification_async(note, user_id, space_id))
+        self._notification_tasks.add(task)
+        task.add_done_callback(self._notification_tasks.discard)
+
+    async def _send_note_created_notification_async(
+        self,
+        note: Note,
+        user_id: UUID,
+        space_id: UUID,
+    ) -> None:
+        """Internal async method to send note created notification."""
         try:
             # Get integration for the space
             integration = await self.get_telegram_integration(space_id)
@@ -394,7 +408,7 @@ class TelegramService(Service):
                 error=str(e),
             )
 
-    async def send_note_updated_notification(
+    def send_note_updated_notification(
         self,
         note: Note,
         user_id: UUID,
@@ -402,14 +416,26 @@ class TelegramService(Service):
     ) -> None:
         """Send notification when a note is updated.
 
-        This is a fire-and-forget operation that logs errors but doesn't
-        raise exceptions to avoid disrupting the main operation.
+        This is a fire-and-forget operation that creates a background task
+        and logs errors but doesn't raise exceptions to avoid disrupting
+        the main operation.
 
         Args:
             note: The updated note
             user_id: ID of the user who updated the note
             space_id: ID of the space containing the note
         """
+        task = asyncio.create_task(self._send_note_updated_notification_async(note, user_id, space_id))
+        self._notification_tasks.add(task)
+        task.add_done_callback(self._notification_tasks.discard)
+
+    async def _send_note_updated_notification_async(
+        self,
+        note: Note,
+        user_id: UUID,
+        space_id: UUID,
+    ) -> None:
+        """Internal async method to send note updated notification."""
         try:
             # Get integration for the space
             integration = await self.get_telegram_integration(space_id)
@@ -480,7 +506,7 @@ class TelegramService(Service):
                 error=str(e),
             )
 
-    async def send_comment_created_notification(
+    def send_comment_created_notification(
         self,
         comment: Comment,
         note: Note,
@@ -489,8 +515,9 @@ class TelegramService(Service):
     ) -> None:
         """Send notification when a comment is created.
 
-        This is a fire-and-forget operation that logs errors but doesn't
-        raise exceptions to avoid disrupting the main operation.
+        This is a fire-and-forget operation that creates a background task
+        and logs errors but doesn't raise exceptions to avoid disrupting
+        the main operation.
 
         Args:
             comment: The created comment
@@ -498,6 +525,18 @@ class TelegramService(Service):
             user_id: ID of the user who created the comment
             space_id: ID of the space containing the note
         """
+        task = asyncio.create_task(self._send_comment_created_notification_async(comment, note, user_id, space_id))
+        self._notification_tasks.add(task)
+        task.add_done_callback(self._notification_tasks.discard)
+
+    async def _send_comment_created_notification_async(
+        self,
+        comment: Comment,
+        note: Note,
+        user_id: UUID,
+        space_id: UUID,
+    ) -> None:
+        """Internal async method to send comment created notification."""
         try:
             # Get integration for the space
             integration = await self.get_telegram_integration(space_id)
