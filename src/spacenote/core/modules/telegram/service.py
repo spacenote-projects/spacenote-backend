@@ -5,7 +5,13 @@ import structlog
 from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
+from spacenote.core.modules.field.models import FieldType
+from spacenote.core.modules.note.models import Note
+from spacenote.core.modules.space.models import Space
 from spacenote.core.modules.telegram.models import (
+    CommentCreatedContext,
+    NoteCreatedContext,
+    NoteUpdatedContext,
     TelegramEventType,
     TelegramIntegration,
     TelegramNotificationConfig,
@@ -18,7 +24,7 @@ from spacenote.core.modules.telegram.test_data import (
     generate_note_created_context,
     generate_note_updated_context,
 )
-from spacenote.errors import ValidationError
+from spacenote.errors import NotFoundError, ValidationError
 
 logger = structlog.get_logger(__name__)
 
@@ -33,6 +39,97 @@ class TelegramService(Service):
     async def on_start(self) -> None:
         await self._collection.create_index([("space_id", 1)], unique=True)
         logger.debug("telegram_service_started")
+
+    def _prepare_fields_for_template(self, note: Note, space: Space) -> dict[str, Any]:
+        """Prepare note fields for template rendering.
+
+        Converts raw field values to display-friendly format:
+        - USER fields: UUID -> username
+        - DATETIME fields: ISO string -> formatted string
+        - TAGS fields: list -> comma-separated string
+        - Other fields: appropriate formatting
+
+        Args:
+            note: Note with raw field values
+            space: Space with field definitions
+
+        Returns:
+            Dictionary with field_id -> formatted value mappings
+        """
+        prepared_fields: dict[str, Any] = {}
+
+        for field in space.fields:
+            field_value = note.fields.get(field.id)
+
+            if field_value is None:
+                prepared_fields[field.id] = None
+                continue
+
+            if field.type == FieldType.USER:
+                # Resolve UUID to username
+                try:
+                    if isinstance(field_value, str):
+                        user_id = UUID(field_value)
+                    elif isinstance(field_value, UUID):
+                        user_id = field_value
+                    else:
+                        prepared_fields[field.id] = str(field_value)
+                        continue
+
+                    user = self.core.services.user.get_user(user_id)
+                    prepared_fields[field.id] = user.username
+                except (ValueError, NotFoundError):
+                    # If UUID is invalid or user not found, use the raw value
+                    prepared_fields[field.id] = str(field_value)
+
+            elif field.type == FieldType.TAGS:
+                # Convert list to comma-separated string
+                if isinstance(field_value, list):
+                    prepared_fields[field.id] = ", ".join(field_value)
+                else:
+                    prepared_fields[field.id] = str(field_value)
+
+            elif field.type == FieldType.DATETIME:
+                # Format datetime for display
+                if isinstance(field_value, str):
+                    # Already a string (ISO format), could format it better here
+                    prepared_fields[field.id] = field_value
+                else:
+                    prepared_fields[field.id] = str(field_value)
+
+            elif field.type == FieldType.BOOLEAN:
+                # Convert boolean to readable string
+                prepared_fields[field.id] = "Yes" if field_value else "No"
+
+            else:
+                # For other types (STRING, MARKDOWN, INT, FLOAT, STRING_CHOICE), use as is
+                prepared_fields[field.id] = field_value
+
+        return prepared_fields
+
+    def _prepare_context_for_template(self, context: TelegramTemplateContext) -> dict[str, Any]:
+        """Prepare context for template rendering, including field preparation.
+
+        Args:
+            context: Template context with raw data
+
+        Returns:
+            Dictionary with prepared data for template rendering
+        """
+        # Convert context to dict
+        context_dict = context.model_dump(mode="json")
+
+        # Prepare fields for display if we have a note context
+        if (
+            isinstance(context, (NoteCreatedContext, NoteUpdatedContext, CommentCreatedContext))
+            and hasattr(context, "note")
+            and hasattr(context, "space")
+        ):
+            prepared_fields = self._prepare_fields_for_template(context.note, context.space)
+            # Replace raw fields with prepared fields
+            context_dict["note"]["fields"] = prepared_fields
+
+        return context_dict
 
     async def get_telegram_integration(self, space_id: UUID) -> TelegramIntegration | None:
         """Get Telegram integration for a space."""
@@ -170,7 +267,8 @@ class TelegramService(Service):
 
                 # Render the template with mock data
                 try:
-                    rendered_message = render_telegram_template(config.template, context)
+                    prepared_context = self._prepare_context_for_template(context)
+                    rendered_message = render_telegram_template(config.template, prepared_context)
                 except Exception as e:
                     results[event_type] = f"Template render error: {e!s}"
                     continue

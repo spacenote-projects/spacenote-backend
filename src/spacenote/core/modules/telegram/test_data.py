@@ -1,5 +1,6 @@
 """Mock data generator for testing Telegram notifications."""
 
+import random
 from uuid import uuid4
 
 from spacenote.core.modules.comment.models import Comment
@@ -41,8 +42,13 @@ def generate_mock_note_fields(space: Space) -> dict[str, FieldValueType]:
         elif field.type == FieldType.TAGS:
             mock_fields[field.id] = ["tag1", "tag2"]
         elif field.type == FieldType.USER:
-            # Generate a mock user UUID
-            mock_fields[field.id] = str(uuid4())
+            # Use a real user from space members so it can be resolved to username
+            if space.members:
+                # Pick a random member from the space
+                mock_fields[field.id] = str(random.choice(list(space.members)))
+            else:
+                # Fallback to a generated UUID if no members (shouldn't happen)
+                mock_fields[field.id] = str(uuid4())
         elif field.type == FieldType.DATETIME:
             mock_fields[field.id] = now().isoformat()
         elif field.type == FieldType.INT:
@@ -65,12 +71,15 @@ def generate_note_created_context(space: Space) -> NoteCreatedContext:
     mock_fields = generate_mock_note_fields(space)
     test_time = now()
 
+    # Use a real member from the space for the note creator
+    user_id = random.choice(list(space.members)) if space.members else uuid4()
+
     # Create a mock note
     note = Note(
         id=uuid4(),
         space_id=space.id,
         number=9999,
-        user_id=uuid4(),
+        user_id=user_id,
         fields=mock_fields,
         created_at=test_time,
         edited_at=None,
@@ -78,13 +87,13 @@ def generate_note_created_context(space: Space) -> NoteCreatedContext:
     )
 
     # Create a mock user
-    user = UserView(id=uuid4(), username="test_user")
+    user = UserView(id=user_id, username="test_user")
 
     return NoteCreatedContext(
         note=note,
         user=user,
         space=space,
-        url=f"https://spacenote.app/spaces/{space.slug}/notes/9999",
+        url=f"https://spacenote.app/s/{space.slug}/notes/9999",
     )
 
 
@@ -101,12 +110,15 @@ def generate_note_updated_context(space: Space) -> NoteUpdatedContext:
     created_time = now()
     edited_time = now()
 
+    # Use a real member from the space for the note updater
+    user_id = random.choice(list(space.members)) if space.members else uuid4()
+
     # Create a mock note with edit timestamp
     note = Note(
         id=uuid4(),
         space_id=space.id,
         number=9999,
-        user_id=uuid4(),
+        user_id=user_id,
         fields=mock_fields,
         created_at=created_time,
         edited_at=edited_time,
@@ -114,13 +126,13 @@ def generate_note_updated_context(space: Space) -> NoteUpdatedContext:
     )
 
     # Create a mock user
-    user = UserView(id=uuid4(), username="test_user")
+    user = UserView(id=user_id, username="test_user")
 
     return NoteUpdatedContext(
         note=note,
         user=user,
         space=space,
-        url=f"https://spacenote.app/spaces/{space.slug}/notes/9999",
+        url=f"https://spacenote.app/s/{space.slug}/notes/9999",
     )
 
 
@@ -137,12 +149,15 @@ def generate_comment_created_context(space: Space) -> CommentCreatedContext:
     test_time = now()
     note_id = uuid4()
 
+    # Use a real member from the space for the comment creator
+    user_id = random.choice(list(space.members)) if space.members else uuid4()
+
     # Create a mock note
     note = Note(
         id=note_id,
         space_id=space.id,
         number=9999,
-        user_id=uuid4(),
+        user_id=user_id,
         fields=mock_fields,
         created_at=test_time,
         activity_at=test_time,
@@ -153,19 +168,19 @@ def generate_comment_created_context(space: Space) -> CommentCreatedContext:
         id=uuid4(),
         note_id=note_id,
         space_id=space.id,
-        user_id=uuid4(),
+        user_id=user_id,
         number=1,
         content="This is a test comment for notification testing. It demonstrates how your comment notifications will appear.",
         created_at=test_time,
     )
 
     # Create a mock user
-    user = UserView(id=uuid4(), username="test_user")
+    user = UserView(id=user_id, username="test_user")
 
     return CommentCreatedContext(
         note=note,
         comment=comment,
         user=user,
         space=space,
-        url=f"https://spacenote.app/spaces/{space.slug}/notes/9999#comment-1",
+        url=f"https://spacenote.app/s/{space.slug}/notes/9999#comment-1",
     )

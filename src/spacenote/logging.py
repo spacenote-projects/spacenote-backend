@@ -21,6 +21,12 @@ def setup_logging(debug: bool) -> None:
     logging.getLogger("pymongo.server").setLevel(logging.WARNING)
     logging.getLogger("pymongo.command").setLevel(logging.WARNING)
 
+    # Suppress telegram library logs to avoid leaking bot tokens
+    logging.getLogger("telegram").setLevel(logging.WARNING)
+    logging.getLogger("telegram.ext").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)  # Used by telegram library
+    logging.getLogger("httpcore").setLevel(logging.WARNING)  # Used by httpx
+
     # Base processors for all environments
     processors: list[structlog.types.Processor] = [
         structlog.stdlib.filter_by_level,
