@@ -7,13 +7,16 @@ from telegram.error import TelegramError
 logger = structlog.get_logger(__name__)
 
 
-async def send_telegram_message(bot_token: str, chat_id: str, text: str) -> tuple[bool, str | None]:
-    """Send a simple text message to Telegram.
+async def send_telegram_message(
+    bot_token: str, chat_id: str, text: str, parse_mode: str | None = None
+) -> tuple[bool, str | None]:
+    """Send a text message to Telegram.
 
     Args:
         bot_token: Telegram bot API token
         chat_id: Telegram chat ID (can be numeric or @username)
         text: Message text to send
+        parse_mode: Optional parse mode ('HTML', 'Markdown', 'MarkdownV2')
 
     Returns:
         Tuple of (success, error_message)
@@ -22,7 +25,7 @@ async def send_telegram_message(bot_token: str, chat_id: str, text: str) -> tupl
     """
     try:
         bot = Bot(token=bot_token)
-        await bot.send_message(chat_id=chat_id, text=text)
+        await bot.send_message(chat_id=chat_id, text=text, parse_mode=parse_mode)
     except TelegramError as e:
         error_msg = str(e)
         logger.exception("telegram_send_failed", chat_id=chat_id, error=error_msg)
@@ -32,5 +35,5 @@ async def send_telegram_message(bot_token: str, chat_id: str, text: str) -> tupl
         logger.exception("telegram_send_error", chat_id=chat_id, error=error_msg)
         return False, error_msg
     else:
-        logger.info("telegram_message_sent", chat_id=chat_id)
+        logger.info("telegram_message_sent", chat_id=chat_id, parse_mode=parse_mode)
         return True, None
