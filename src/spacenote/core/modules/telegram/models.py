@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from spacenote.core.db import MongoModel
 from spacenote.core.modules.comment.models import Comment
+from spacenote.core.modules.field.models import FieldValueType
 from spacenote.core.modules.note.models import Note
 from spacenote.core.modules.space.models import Space
 from spacenote.core.modules.user.models import UserView
@@ -49,7 +50,7 @@ NOTE_CREATED_DEFAULT_TEMPLATE = (
 
 NOTE_UPDATED_DEFAULT_TEMPLATE = (
     "✏️ <b>Note #{{note.number}} updated</b> in {{space.title}}\n"
-    "{% for field in note.fields %}"
+    "{% for field in note.updated_fields %}"
     "{% if field[1] %}• {{field[0]}}: {{field[1]}}\n{% endif %}"
     "{% endfor %}"
     "👤 {{user.username}}\n"
@@ -84,6 +85,7 @@ class NotificationContext(BaseModel):
 
     Used for all event types (NOTE_CREATED, NOTE_UPDATED, COMMENT_CREATED).
     The comment field is only populated for COMMENT_CREATED events.
+    The updated_fields field is only populated for NOTE_UPDATED events.
     """
 
     note: Note
@@ -91,6 +93,7 @@ class NotificationContext(BaseModel):
     space: Space
     url: str = Field(..., description="Direct link to the note or comment")
     comment: Comment | None = Field(None, description="Comment (only for COMMENT_CREATED events)")
+    updated_fields: dict[str, FieldValueType] | None = Field(None, description="Updated fields (only for NOTE_UPDATED events)")
 
 
 class TelegramIntegration(MongoModel):
@@ -103,6 +106,7 @@ class TelegramIntegration(MongoModel):
     - {{user.username}} - Username of the person who triggered the event
     - {{note.number}} - Note number (e.g., 42)
     - {{note.fields.FIELD_ID}} - Any note field value (e.g., {{note.fields.title}})
+    - {{note.updated_fields.FIELD_ID}} - Updated field value (only for NOTE_UPDATED events)
     - {{comment.content}} - Comment text (for comment events)
     - {{comment.number}} - Comment number within the note
     - {{space.title}} - Name of the space

@@ -73,7 +73,10 @@ def generate_test_context(event_type: TelegramEventType, space: Space) -> Notifi
 
     user = UserView(id=user_id, username="test_user")
 
-    # Generate URL and comment based on event type
+    # Generate URL, comment, and updated_fields based on event type
+    comment = None
+    updated_fields = None
+
     if event_type == TelegramEventType.COMMENT_CREATED:
         comment = Comment(
             id=uuid4(),
@@ -86,8 +89,16 @@ def generate_test_context(event_type: TelegramEventType, space: Space) -> Notifi
             created_at=test_time,
         )
         url = f"https://spacenote.app/s/{space.slug}/notes/9999#comment-1"
+    elif event_type == TelegramEventType.NOTE_UPDATED:
+        # For NOTE_UPDATED, generate a subset of fields as updated_fields
+        field_ids = list(mock_fields.keys())
+        if field_ids:
+            # Take first 2-3 fields as updated (or all if fewer than 3)
+            num_updated = min(len(field_ids), 3)
+            updated_field_ids = field_ids[:num_updated]
+            updated_fields = {field_id: mock_fields[field_id] for field_id in updated_field_ids}
+        url = f"https://spacenote.app/s/{space.slug}/notes/9999"
     else:
-        comment = None
         url = f"https://spacenote.app/s/{space.slug}/notes/9999"
 
-    return NotificationContext(note=note, user=user, space=space, url=url, comment=comment)
+    return NotificationContext(note=note, user=user, space=space, url=url, comment=comment, updated_fields=updated_fields)

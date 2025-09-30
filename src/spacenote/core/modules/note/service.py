@@ -157,6 +157,7 @@ class NoteService(Service):
                 note=updated_note,
                 user_id=current_user_id,
                 space_id=updated_note.space_id,
+                updated_fields=parsed_fields,
             )
 
         return updated_note

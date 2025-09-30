@@ -120,6 +120,7 @@ class TelegramService(Service):
         user_id: UUID,
         note: Note,
         comment: Comment | None = None,
+        updated_fields: dict[str, Any] | None = None,
     ) -> None:
         """Internal async method to send any type of notification."""
         try:
@@ -151,6 +152,7 @@ class TelegramService(Service):
                 frontend_url=self.core.config.frontend_url,
                 user_cache=self.core.services.user.get_user_cache(),
                 comment=comment,
+                updated_fields=updated_fields,
             )
 
             success, error_msg = await send_telegram_message(
@@ -187,7 +189,13 @@ class TelegramService(Service):
             )
 
     def send_notification(
-        self, event_type: TelegramEventType, note: Note, user_id: UUID, space_id: UUID, comment: Comment | None = None
+        self,
+        event_type: TelegramEventType,
+        note: Note,
+        user_id: UUID,
+        space_id: UUID,
+        comment: Comment | None = None,
+        updated_fields: dict[str, Any] | None = None,
     ) -> None:
         """Send notification for any event type in the background.
 
@@ -197,8 +205,9 @@ class TelegramService(Service):
             user_id: User who triggered the event
             space_id: Space where event occurred
             comment: Comment object (required for COMMENT_CREATED events)
+            updated_fields: Dictionary of updated fields (only for NOTE_UPDATED events)
         """
-        task = asyncio.create_task(self._send_notification_async(event_type, space_id, user_id, note, comment))
+        task = asyncio.create_task(self._send_notification_async(event_type, space_id, user_id, note, comment, updated_fields))
         self._notification_tasks.add(task)
         task.add_done_callback(self._notification_tasks.discard)
 
@@ -238,6 +247,7 @@ class TelegramService(Service):
                         frontend_url=self.core.config.frontend_url,
                         user_cache=self.core.services.user.get_user_cache(),
                         comment=context.comment if hasattr(context, "comment") else None,
+                        updated_fields=context.updated_fields if hasattr(context, "updated_fields") else None,
                     )
                 except Exception as e:
                     results[event_type] = f"Template render error: {e!s}"
