@@ -12,7 +12,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 from spacenote.core.core import Service
 from spacenote.core.modules.comment.models import Comment
 from spacenote.core.modules.counter.models import CounterType
-from spacenote.core.modules.export.models import ExportComment, ExportData, ExportNote, ExportSpace
+from spacenote.core.modules.export.models import ExportComment, ExportData, ExportNote, ExportSpace, ExportTelegramConfig
 from spacenote.core.modules.field.models import FieldType
 from spacenote.core.modules.note.models import Note
 from spacenote.core.modules.space.models import Space
@@ -50,6 +50,14 @@ class ExportService(Service):
             user = self.core.services.user.get_user(member_id)
             member_usernames.append(user.username)
 
+        telegram_integration = await self.core.services.telegram.get_telegram_integration(space.id)
+        export_telegram = None
+        if telegram_integration:
+            export_telegram = ExportTelegramConfig(
+                is_enabled=telegram_integration.is_enabled,
+                notifications=telegram_integration.notifications,
+            )
+
         export_space = ExportSpace(
             slug=space.slug,
             title=space.title,
@@ -60,6 +68,7 @@ class ExportService(Service):
             hidden_create_fields=space.hidden_create_fields,
             filters=space.filters,
             templates=space.templates,
+            telegram=export_telegram,
         )
 
         export_notes = None
@@ -272,6 +281,26 @@ class ExportService(Service):
             for filter_def in export_data.space.filters:
                 await self.core.services.filter.add_filter_to_space(space.id, filter_def)
             logger.info("import_filters", space_id=space.id, count=len(export_data.space.filters))
+
+        # Import telegram integration if present
+        if export_data.space.telegram:
+            await self.core.services.telegram.create_telegram_integration(
+                space_id=space.id,
+                bot_token="",
+                chat_id="",
+            )
+            await self.core.services.telegram.update_telegram_integration(
+                space_id=space.id,
+                is_enabled=False,
+            )
+            for event_type, config in export_data.space.telegram.notifications.items():
+                await self.core.services.telegram.update_notification_config(
+                    space_id=space.id,
+                    event_type=event_type,
+                    enabled=config.enabled,
+                    template=config.template,
+                )
+            logger.info("import_telegram", space_id=space.id, notification_count=len(export_data.space.telegram.notifications))
 
         # Import notes if present
         note_id_map = {}  # Maps note number to note ID for comment import

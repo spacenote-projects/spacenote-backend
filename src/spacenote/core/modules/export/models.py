@@ -7,6 +7,16 @@ from pydantic import BaseModel, ConfigDict, Field
 from spacenote.core.modules.field.models import FieldValueType, SpaceField
 from spacenote.core.modules.filter.models import Filter
 from spacenote.core.modules.space.models import SpaceTemplates
+from spacenote.core.modules.telegram.models import TelegramEventType, TelegramNotificationConfig
+
+
+class ExportTelegramConfig(BaseModel):
+    """Telegram integration configuration for export (excludes sensitive credentials)."""
+
+    is_enabled: bool = Field(..., description="Whether telegram integration is enabled")
+    notifications: dict[TelegramEventType, TelegramNotificationConfig] = Field(
+        ..., description="Notification configuration for each event type"
+    )
 
 
 class ExportNote(BaseModel):
@@ -47,6 +57,7 @@ class ExportSpace(BaseModel):
     hidden_create_fields: list[str]
     filters: list[Filter]
     templates: SpaceTemplates
+    telegram: ExportTelegramConfig | None = Field(None, description="Telegram integration configuration (excludes credentials)")
 
 
 class ExportData(BaseModel):
