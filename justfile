@@ -62,4 +62,5 @@ docker-run-local:
         -e SPACENOTE_DATABASE_URL="${SPACENOTE_DATABASE_URL//127.0.0.1/host.docker.internal}" \
         -e SPACENOTE_SESSION_SECRET_KEY="${SPACENOTE_SESSION_SECRET_KEY}" \
         -e SPACENOTE_CORS_ORIGINS="${SPACENOTE_CORS_ORIGINS}" \
+        -e SPACENOTE_FRONTEND_URL="${SPACENOTE_FRONTEND_URL}" \
         spacenote-backend:latest

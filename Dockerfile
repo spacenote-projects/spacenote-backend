@@ -7,11 +7,12 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 # Set working directory
 WORKDIR /app
 
-# Copy dependency files
+# Copy dependency files and source code
 COPY pyproject.toml uv.lock ./
+COPY ./src ./src
 
-# Install dependencies
-RUN uv sync --frozen --no-install-project --no-dev
+# Install dependencies and project
+RUN uv sync --frozen --no-dev --no-editable
 
 # Production stage
 FROM python:3.13-slim
@@ -32,15 +33,11 @@ RUN useradd -m -u 1000 -s /bin/bash appuser
 # Set working directory
 WORKDIR /app
 
-# Copy virtual environment from builder
+# Copy virtual environment from builder (includes installed spacenote package)
 COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
-
-# Copy application code
-COPY --chown=appuser:appuser ./src /app/src
 
 # Set environment variables
 ENV PATH="/app/.venv/bin:$PATH" \
-    PYTHONPATH="/app/src" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     # Default app settings (override via docker-compose or k8s)
