@@ -48,9 +48,9 @@ def render_notification_message(
     """
     # Generate URL based on event type
     if event_type == TelegramEventType.COMMENT_CREATED and comment:
-        url = f"{frontend_url}/s/{space.slug}/notes/{note.number}#comment-{comment.number}"
+        url = f"{frontend_url}/s/{space.slug}/{note.number}#comment-{comment.number}"
     else:
-        url = f"{frontend_url}/s/{space.slug}/notes/{note.number}"
+        url = f"{frontend_url}/s/{space.slug}/{note.number}"
 
     # Create context
     context = NotificationContext(note=note, user=user, space=space, url=url, comment=comment)
