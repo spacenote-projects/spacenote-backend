@@ -79,36 +79,18 @@ def get_default_notifications() -> dict[TelegramEventType, TelegramNotificationC
     }
 
 
-class NoteCreatedContext(BaseModel):
-    """Template context for NOTE_CREATED event."""
+class NotificationContext(BaseModel):
+    """Template context for notification events.
+
+    Used for all event types (NOTE_CREATED, NOTE_UPDATED, COMMENT_CREATED).
+    The comment field is only populated for COMMENT_CREATED events.
+    """
 
     note: Note
     user: UserView
     space: Space
-    url: str = Field(..., description="Direct link to the created note")
-
-
-class NoteUpdatedContext(BaseModel):
-    """Template context for NOTE_UPDATED event."""
-
-    note: Note
-    user: UserView
-    space: Space
-    url: str = Field(..., description="Direct link to the updated note")
-
-
-class CommentCreatedContext(BaseModel):
-    """Template context for COMMENT_CREATED event."""
-
-    note: Note
-    comment: Comment
-    user: UserView
-    space: Space
-    url: str = Field(..., description="Direct link to the comment")
-
-
-TelegramTemplateContext = NoteCreatedContext | NoteUpdatedContext | CommentCreatedContext
-"""Union type for all possible Telegram template contexts."""
+    url: str = Field(..., description="Direct link to the note or comment")
+    comment: Comment | None = Field(None, description="Comment (only for COMMENT_CREATED events)")
 
 
 class TelegramIntegration(MongoModel):

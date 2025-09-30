@@ -1,3 +1,4 @@
+from types import MappingProxyType
 from typing import Any
 from uuid import UUID
 
@@ -45,6 +46,10 @@ class UserService(Service):
     def get_all_users(self) -> list[User]:
         """Get all users from cache."""
         return list(self._users.values())
+
+    def get_user_cache(self) -> MappingProxyType[UUID, User]:
+        """Get read-only view of user cache for formatting purposes."""
+        return MappingProxyType(self._users)
 
     async def create_user(self, username: str, password: str) -> User:
         """Create user with hashed password."""

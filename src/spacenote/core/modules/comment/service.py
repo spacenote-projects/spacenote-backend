@@ -6,6 +6,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
 from spacenote.core.modules.comment.models import Comment
+from spacenote.core.modules.telegram.models import TelegramEventType
 from spacenote.core.pagination import PaginationResult
 from spacenote.utils import now
 
@@ -48,11 +49,8 @@ class CommentService(Service):
         note = await self.core.services.note.get_note(note_id)
 
         # Send Telegram notification in the background
-        self.core.services.telegram.send_comment_created_notification(
-            comment=comment,
-            note=note,
-            user_id=user_id,
-            space_id=space_id,
+        self.core.services.telegram.send_notification(
+            event_type=TelegramEventType.COMMENT_CREATED, note=note, user_id=user_id, space_id=space_id, comment=comment
         )
 
         return comment

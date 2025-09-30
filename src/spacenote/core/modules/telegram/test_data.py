@@ -7,13 +7,7 @@ from spacenote.core.modules.comment.models import Comment
 from spacenote.core.modules.field.models import FieldOption, FieldType, FieldValueType
 from spacenote.core.modules.note.models import Note
 from spacenote.core.modules.space.models import Space
-from spacenote.core.modules.telegram.models import (
-    CommentCreatedContext,
-    NoteCreatedContext,
-    NoteUpdatedContext,
-    TelegramEventType,
-    TelegramTemplateContext,
-)
+from spacenote.core.modules.telegram.models import NotificationContext, TelegramEventType
 from spacenote.core.modules.user.models import UserView
 from spacenote.utils import now
 
@@ -50,7 +44,7 @@ def _generate_mock_note_fields(space: Space) -> dict[str, FieldValueType]:
     return mock_fields
 
 
-def generate_test_context(event_type: TelegramEventType, space: Space) -> TelegramTemplateContext:
+def generate_test_context(event_type: TelegramEventType, space: Space) -> NotificationContext:
     """Generate test context for any notification event type.
 
     Args:
@@ -79,23 +73,7 @@ def generate_test_context(event_type: TelegramEventType, space: Space) -> Telegr
 
     user = UserView(id=user_id, username="test_user")
 
-    # Generate event-specific context
-    if event_type == TelegramEventType.NOTE_CREATED:
-        return NoteCreatedContext(
-            note=note,
-            user=user,
-            space=space,
-            url=f"https://spacenote.app/s/{space.slug}/notes/9999",
-        )
-
-    if event_type == TelegramEventType.NOTE_UPDATED:
-        return NoteUpdatedContext(
-            note=note,
-            user=user,
-            space=space,
-            url=f"https://spacenote.app/s/{space.slug}/notes/9999",
-        )
-
+    # Generate URL and comment based on event type
     if event_type == TelegramEventType.COMMENT_CREATED:
         comment = Comment(
             id=uuid4(),
@@ -107,29 +85,9 @@ def generate_test_context(event_type: TelegramEventType, space: Space) -> Telegr
             "It demonstrates how your comment notifications will appear.",
             created_at=test_time,
         )
+        url = f"https://spacenote.app/s/{space.slug}/notes/9999#comment-1"
+    else:
+        comment = None
+        url = f"https://spacenote.app/s/{space.slug}/notes/9999"
 
-        return CommentCreatedContext(
-            note=note,
-            comment=comment,
-            user=user,
-            space=space,
-            url=f"https://spacenote.app/s/{space.slug}/notes/9999#comment-1",
-        )
-
-    raise ValueError(f"Unknown event type: {event_type}")
-
-
-# Keep old function names for backward compatibility
-def generate_note_created_context(space: Space) -> NoteCreatedContext:
-    """Generate context for NOTE_CREATED event testing. Deprecated - use generate_test_context."""
-    return generate_test_context(TelegramEventType.NOTE_CREATED, space)  # type: ignore[return-value]
-
-
-def generate_note_updated_context(space: Space) -> NoteUpdatedContext:
-    """Generate context for NOTE_UPDATED event testing. Deprecated - use generate_test_context."""
-    return generate_test_context(TelegramEventType.NOTE_UPDATED, space)  # type: ignore[return-value]
-
-
-def generate_comment_created_context(space: Space) -> CommentCreatedContext:
-    """Generate context for COMMENT_CREATED event testing. Deprecated - use generate_test_context."""
-    return generate_test_context(TelegramEventType.COMMENT_CREATED, space)  # type: ignore[return-value]
+    return NotificationContext(note=note, user=user, space=space, url=url, comment=comment)

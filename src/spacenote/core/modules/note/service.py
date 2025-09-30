@@ -7,6 +7,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 from spacenote.core.core import Service
 from spacenote.core.modules.counter.models import CounterType
 from spacenote.core.modules.note.models import Note
+from spacenote.core.modules.telegram.models import TelegramEventType
 from spacenote.core.pagination import PaginationResult
 from spacenote.errors import NotFoundError
 from spacenote.utils import now
@@ -115,10 +116,8 @@ class NoteService(Service):
         note = await self.get_note(res.inserted_id)
 
         # Send Telegram notification in the background
-        self.core.services.telegram.send_note_created_notification(
-            note=note,
-            user_id=user_id,
-            space_id=space_id,
+        self.core.services.telegram.send_notification(
+            event_type=TelegramEventType.NOTE_CREATED, note=note, user_id=user_id, space_id=space_id
         )
 
         return note
@@ -153,7 +152,8 @@ class NoteService(Service):
 
         # Send Telegram notification in the background if we have user context
         if current_user_id:
-            self.core.services.telegram.send_note_updated_notification(
+            self.core.services.telegram.send_notification(
+                event_type=TelegramEventType.NOTE_UPDATED,
                 note=updated_note,
                 user_id=current_user_id,
                 space_id=updated_note.space_id,
