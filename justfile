@@ -42,10 +42,18 @@ agent-stop: # For AI agents
 
 # Docker commands
 docker-build:
-    docker buildx build --platform linux/amd64,linux/arm64 -t spacenote-backend:latest .
+    docker buildx build --platform linux/amd64,linux/arm64 \
+        --build-arg GIT_COMMIT_HASH=$(git rev-parse --short HEAD) \
+        --build-arg GIT_COMMIT_DATE=$(git log -1 --format=%cI) \
+        --build-arg BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+        -t spacenote-backend:latest .
 
 docker-push tag="latest":
-    docker buildx build --platform linux/amd64,linux/arm64 -t ghcr.io/spacenote-projects/spacenote-backend:{{tag}} --push .
+    docker buildx build --platform linux/amd64,linux/arm64 \
+        --build-arg GIT_COMMIT_HASH=$(git rev-parse --short HEAD) \
+        --build-arg GIT_COMMIT_DATE=$(git log -1 --format=%cI) \
+        --build-arg BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+        -t ghcr.io/spacenote-projects/spacenote-backend:{{tag}} --push .
 
 docker-run-local:
     docker run --rm \

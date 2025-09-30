@@ -31,8 +31,9 @@ def create_fastapi_app(app_instance: App, config: Config) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         """FastAPI application lifespan management."""
-        # Store app instance in app state
+        # Store app instance and config in app state
         app.state.app = app_instance
+        app.state.config = config
         async with app_instance.lifespan():
             yield
 

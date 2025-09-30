@@ -16,6 +16,11 @@ RUN uv sync --frozen --no-install-project --no-dev
 # Production stage
 FROM python:3.13-slim
 
+# Build args for version information
+ARG GIT_COMMIT_HASH=unknown
+ARG GIT_COMMIT_DATE=unknown
+ARG BUILD_TIME=unknown
+
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
@@ -41,7 +46,11 @@ ENV PATH="/app/.venv/bin:$PATH" \
     # Default app settings (override via docker-compose or k8s)
     SPACENOTE_HOST=0.0.0.0 \
     SPACENOTE_PORT=8000 \
-    SPACENOTE_DEBUG=false
+    SPACENOTE_DEBUG=false \
+    # Version information (injected during build)
+    SPACENOTE_GIT_COMMIT_HASH=${GIT_COMMIT_HASH} \
+    SPACENOTE_GIT_COMMIT_DATE=${GIT_COMMIT_DATE} \
+    SPACENOTE_BUILD_TIME=${BUILD_TIME}
 
 # Switch to non-root user
 USER appuser

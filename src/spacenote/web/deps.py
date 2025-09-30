@@ -4,6 +4,7 @@ from fastapi import Depends, Request
 from fastapi.security import APIKeyCookie, HTTPAuthorizationCredentials, HTTPBearer
 
 from spacenote.app import App
+from spacenote.config import Config
 from spacenote.core.modules.session.models import AuthToken
 from spacenote.errors import AuthenticationError
 
@@ -14,6 +15,10 @@ cookie_scheme = APIKeyCookie(name="token", auto_error=False)
 
 async def get_app(request: Request) -> App:
     return cast(App, request.app.state.app)
+
+
+async def get_config(request: Request) -> Config:
+    return cast(Config, request.app.state.config)
 
 
 async def get_auth_token(
