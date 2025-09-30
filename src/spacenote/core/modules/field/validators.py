@@ -65,7 +65,7 @@ class FieldValidator(ABC):
             ValidationError: If the field definition is invalid
         """
         # Always validate field id first
-        if not field.id or not field.id.replace("_", "").isalnum():
+        if not field.id or not field.id.replace("_", "").replace("-", "").isalnum():
             raise ValidationError(f"Invalid field id: {field.id}")
 
         # Then delegate to subclass for type-specific validation

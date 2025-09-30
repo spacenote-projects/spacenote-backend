@@ -44,8 +44,8 @@ class FilterService(Service):
         if space.get_filter(filter.id) is not None:
             raise ValidationError(f"Filter '{filter.id}' already exists in space")
 
-        # Validate filter id format (alphanumeric + underscores)
-        if not filter.id or not filter.id.replace("_", "").isalnum():
+        # Validate filter id format (alphanumeric + underscores + hyphens)
+        if not filter.id or not filter.id.replace("_", "").replace("-", "").isalnum():
             raise ValidationError(f"Invalid filter id: {filter.id}")
 
         # Validate all fields in conditions exist in the space or are system fields
