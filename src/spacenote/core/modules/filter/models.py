@@ -119,16 +119,3 @@ FIELD_TYPE_OPERATORS: dict[FieldType, set[FilterOperator]] = {
         FilterOperator.NE,
     },
 }
-
-
-def get_operators_for_field_type(field_type: FieldType) -> list[FilterOperator]:
-    """Get the list of valid operators for a given field type.
-
-    Args:
-        field_type: The field type to get operators for
-
-    Returns:
-        List of valid operators for the field type, sorted alphabetically
-    """
-    operators = FIELD_TYPE_OPERATORS.get(field_type, set())
-    return sorted(operators, key=lambda x: x.value)
