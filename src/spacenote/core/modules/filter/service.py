@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 from uuid import UUID
 
@@ -10,6 +11,8 @@ from spacenote.core.modules.filter.query_builder import build_mongo_query, build
 from spacenote.core.modules.filter.validators import validate_filter_value
 from spacenote.core.modules.note.models import NOTE_SYSTEM_FIELDS
 from spacenote.errors import NotFoundError, ValidationError
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_FIELD_DEFINITIONS: dict[str, SpaceField] = {
     "number": SpaceField(id="number", type=FieldType.INT, required=True),
@@ -124,14 +127,26 @@ class FilterService(Service):
             raise NotFoundError(f"Filter '{filter_id}' not found in space")
 
         field_definitions = {}
+        valid_conditions = []
         for condition in filter_def.conditions:
             field = space.get_field(condition.field)
             if field is None:
                 field = SYSTEM_FIELD_DEFINITIONS.get(condition.field)
             if field is not None:
                 field_definitions[condition.field] = field
+                valid_conditions.append(condition)
+            else:
+                logger.warning(
+                    "Field '%s' in filter '%s' not found in space %s - likely deleted after filter creation. "
+                    "Skipping condition with operator '%s' and value '%s'.",
+                    condition.field,
+                    filter_id,
+                    space_id,
+                    condition.operator,
+                    condition.value,
+                )
 
-        return build_mongo_query(filter_def.conditions, field_definitions, space_id, current_user_id)
+        return build_mongo_query(valid_conditions, field_definitions, space_id, current_user_id)
 
     def build_mongo_sort(self, space_id: UUID, filter_id: str) -> list[tuple[str, int]]:
         """Build MongoDB sort specification from a filter.

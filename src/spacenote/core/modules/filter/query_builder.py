@@ -41,7 +41,7 @@ def get_field_path(field_id: str) -> str:
     return f"fields.{field_id}"
 
 
-def build_condition_query(operator: FilterOperator, value: FieldValueType) -> dict[str, Any] | FieldValueType:
+def build_condition_query(operator: FilterOperator, value: FieldValueType) -> dict[str, Any]:
     """Build MongoDB query for a single condition.
 
     Args:
@@ -49,21 +49,21 @@ def build_condition_query(operator: FilterOperator, value: FieldValueType) -> di
         value: The filter value
 
     Returns:
-        MongoDB query value or operator document
+        MongoDB query operator document
     """
     if value is None:
         if operator == FilterOperator.EQ:
-            return None
+            return {"$eq": None}
         if operator == FilterOperator.NE:
             return {"$ne": None}
-        return None
+        return {"$eq": None}
 
     if operator == FilterOperator.EQ:
-        return value
+        return {"$eq": value}
 
     mongo_op = _OPERATOR_MAPPING.get(operator)
     if mongo_op is None:
-        return value
+        raise ValueError(f"Operator {operator} not found in mapping - programming error")
 
     if operator == FilterOperator.CONTAINS:
         return {"$regex": value, "$options": "i"}
@@ -102,11 +102,7 @@ def build_mongo_sort(sort_fields: list[str]) -> list[tuple[str, int]]:
     return sort_spec
 
 
-def resolve_special_values(
-    value: FieldValueType,
-    field_type: FieldType,
-    current_user_id: UUID | None,
-) -> FieldValueType:
+def resolve_special_values(value: FieldValueType, field_type: FieldType, current_user_id: UUID | None) -> FieldValueType:
     """Resolve special values like $me to actual values.
 
     Args:
@@ -151,12 +147,9 @@ def build_mongo_query(
 
     for condition in conditions:
         field_path = get_field_path(condition.field)
-        field = field_definitions.get(condition.field)
+        field = field_definitions[condition.field]
 
-        value = condition.value
-        if field:
-            value = resolve_special_values(value, field.type, current_user_id)
-
+        value = resolve_special_values(condition.value, field.type, current_user_id)
         mongo_operator = build_condition_query(condition.operator, value)
 
         if field_path in query:

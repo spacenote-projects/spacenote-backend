@@ -36,16 +36,16 @@ class TestBuildConditionQuery:
 
     def test_null_value_with_eq_operator(self):
         """Test null value with EQ operator."""
-        assert build_condition_query(FilterOperator.EQ, None) is None
+        assert build_condition_query(FilterOperator.EQ, None) == {"$eq": None}
 
     def test_null_value_with_ne_operator(self):
         """Test null value with NE operator."""
         assert build_condition_query(FilterOperator.NE, None) == {"$ne": None}
 
-    def test_eq_operator_returns_value_directly(self):
-        """Test EQ operator returns value directly."""
-        assert build_condition_query(FilterOperator.EQ, "test") == "test"
-        assert build_condition_query(FilterOperator.EQ, 42) == 42
+    def test_eq_operator_returns_dict(self):
+        """Test EQ operator returns dict with $eq."""
+        assert build_condition_query(FilterOperator.EQ, "test") == {"$eq": "test"}
+        assert build_condition_query(FilterOperator.EQ, 42) == {"$eq": 42}
 
     def test_comparison_operators(self):
         """Test numeric comparison operators."""
@@ -137,7 +137,7 @@ class TestBuildMongoQuery:
         field_defs = {"status": SpaceField(id="status", type=FieldType.STRING, required=True)}
 
         result = build_mongo_query(conditions, field_defs, space_id)
-        assert result == {"space_id": space_id, "fields.status": "active"}
+        assert result == {"space_id": space_id, "fields.status": {"$eq": "active"}}
 
     def test_multiple_conditions_on_different_fields(self):
         """Test multiple conditions on different fields."""
@@ -153,7 +153,7 @@ class TestBuildMongoQuery:
 
         result = build_mongo_query(conditions, field_defs, space_id)
         assert result["space_id"] == space_id
-        assert result["fields.status"] == "done"
+        assert result["fields.status"] == {"$eq": "done"}
         assert result["fields.priority"] == {"$gt": 5}
 
     def test_multiple_conditions_on_same_field_uses_and(self):
@@ -179,7 +179,7 @@ class TestBuildMongoQuery:
         field_defs = {"assignee": SpaceField(id="assignee", type=FieldType.USER, required=False)}
 
         result = build_mongo_query(conditions, field_defs, space_id, user_id)
-        assert result["fields.assignee"] == user_id
+        assert result["fields.assignee"] == {"$eq": user_id}
 
     def test_system_field_in_query(self):
         """Test that system fields are not prefixed with 'fields.'"""
