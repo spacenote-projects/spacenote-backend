@@ -1,11 +1,11 @@
 """Tests for filter validators."""
 
 from datetime import UTC, datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 
-from spacenote.core.modules.field.models import FieldType, SpaceField
+from spacenote.core.modules.field.models import FieldOption, FieldType, SpaceField
 from spacenote.core.modules.filter.models import FilterOperator
 from spacenote.core.modules.filter.validators import (
     validate_boolean_value,
@@ -18,6 +18,8 @@ from spacenote.core.modules.filter.validators import (
     validate_tags_value,
     validate_user_value,
 )
+from spacenote.core.modules.space.models import Space
+from spacenote.core.modules.user.models import User
 from spacenote.errors import ValidationError
 
 
@@ -129,20 +131,74 @@ class TestValidateUserValue:
 
     def test_uuid_accepted(self):
         """Test that UUID values are accepted."""
+        user_id = UUID("12345678-1234-5678-1234-567812345678")
+        space = Space(id=uuid4(), slug="test", title="Test", members=[user_id], fields=[])
+        user = User(id=user_id, username="testuser", password_hash="hash")
         field = SpaceField(id="owner", type=FieldType.USER, required=True)
-        validate_user_value(field, UUID("12345678-1234-5678-1234-567812345678"))
 
-    def test_string_accepted(self):
-        """Test that string values are accepted (username or UUID string)."""
+        result = validate_user_value(field, user_id, space, [user])
+        assert result == user_id
+
+    def test_username_converted_to_uuid(self):
+        """Test that username strings are converted to UUID."""
+        user_id = UUID("12345678-1234-5678-1234-567812345678")
+        space = Space(id=uuid4(), slug="test", title="Test", members=[user_id], fields=[])
+        user = User(id=user_id, username="testuser", password_hash="hash")
         field = SpaceField(id="owner", type=FieldType.USER, required=True)
-        validate_user_value(field, "username")
-        validate_user_value(field, "12345678-1234-5678-1234-567812345678")
+
+        result = validate_user_value(field, "testuser", space, [user])
+        assert result == user_id
+
+    def test_uuid_string_converted_to_uuid(self):
+        """Test that UUID strings are converted to UUID objects."""
+        user_id = UUID("12345678-1234-5678-1234-567812345678")
+        space = Space(id=uuid4(), slug="test", title="Test", members=[user_id], fields=[])
+        user = User(id=user_id, username="testuser", password_hash="hash")
+        field = SpaceField(id="owner", type=FieldType.USER, required=True)
+
+        result = validate_user_value(field, "12345678-1234-5678-1234-567812345678", space, [user])
+        assert result == user_id
+
+    def test_special_value_me_preserved(self):
+        """Test that $me special value is preserved."""
+        user_id = UUID("12345678-1234-5678-1234-567812345678")
+        space = Space(id=uuid4(), slug="test", title="Test", members=[user_id], fields=[])
+        user = User(id=user_id, username="testuser", password_hash="hash")
+        field = SpaceField(id="owner", type=FieldType.USER, required=True)
+
+        result = validate_user_value(field, "$me", space, [user])
+        assert result == "$me"
+
+    def test_non_member_uuid_raises_error(self):
+        """Test that UUID not in space members raises ValidationError."""
+        user_id = UUID("12345678-1234-5678-1234-567812345678")
+        other_id = UUID("87654321-4321-8765-4321-876543218765")
+        space = Space(id=uuid4(), slug="test", title="Test", members=[user_id], fields=[])
+        user = User(id=user_id, username="testuser", password_hash="hash")
+        field = SpaceField(id="owner", type=FieldType.USER, required=True)
+
+        with pytest.raises(ValidationError, match="not a member of this space"):
+            validate_user_value(field, other_id, space, [user])
+
+    def test_non_member_username_raises_error(self):
+        """Test that username not in space members raises ValidationError."""
+        user_id = UUID("12345678-1234-5678-1234-567812345678")
+        space = Space(id=uuid4(), slug="test", title="Test", members=[user_id], fields=[])
+        user = User(id=user_id, username="testuser", password_hash="hash")
+        field = SpaceField(id="owner", type=FieldType.USER, required=True)
+
+        with pytest.raises(ValidationError, match="not found or not a member"):
+            validate_user_value(field, "otheruser", space, [user])
 
     def test_non_string_non_uuid_raises_error(self):
         """Test that non-string, non-UUID values raise ValidationError."""
+        user_id = UUID("12345678-1234-5678-1234-567812345678")
+        space = Space(id=uuid4(), slug="test", title="Test", members=[user_id], fields=[])
+        user = User(id=user_id, username="testuser", password_hash="hash")
         field = SpaceField(id="owner", type=FieldType.USER, required=True)
-        with pytest.raises(ValidationError, match="must be a UUID or username string"):
-            validate_user_value(field, 123)
+
+        with pytest.raises(ValidationError, match="must be a UUID, username string"):
+            validate_user_value(field, 123, space, [user])
 
 
 class TestValidateStringChoiceValue:
@@ -150,30 +206,83 @@ class TestValidateStringChoiceValue:
 
     def test_single_string_value_accepted(self):
         """Test that single string values are accepted for EQ/NE operators."""
-        field = SpaceField(id="status", type=FieldType.STRING_CHOICE, required=True)
+        field = SpaceField(
+            id="status",
+            type=FieldType.STRING_CHOICE,
+            required=True,
+            options={FieldOption.VALUES: ["active", "pending", "archived", "deleted"]},
+        )
         validate_string_choice_value(field, FilterOperator.EQ, "active")
 
     def test_list_value_for_in_operator(self):
         """Test that list values are accepted for IN operator."""
-        field = SpaceField(id="status", type=FieldType.STRING_CHOICE, required=True)
+        field = SpaceField(
+            id="status",
+            type=FieldType.STRING_CHOICE,
+            required=True,
+            options={FieldOption.VALUES: ["active", "pending", "archived", "deleted"]},
+        )
         validate_string_choice_value(field, FilterOperator.IN, ["active", "pending"])
 
     def test_list_value_for_nin_operator(self):
         """Test that list values are accepted for NIN operator."""
-        field = SpaceField(id="status", type=FieldType.STRING_CHOICE, required=True)
+        field = SpaceField(
+            id="status",
+            type=FieldType.STRING_CHOICE,
+            required=True,
+            options={FieldOption.VALUES: ["active", "pending", "archived", "deleted"]},
+        )
         validate_string_choice_value(field, FilterOperator.NIN, ["archived", "deleted"])
 
     def test_non_list_for_in_raises_error(self):
         """Test that non-list values for IN operator raise ValidationError."""
-        field = SpaceField(id="status", type=FieldType.STRING_CHOICE, required=True)
+        field = SpaceField(
+            id="status",
+            type=FieldType.STRING_CHOICE,
+            required=True,
+            options={FieldOption.VALUES: ["active", "pending"]},
+        )
         with pytest.raises(ValidationError, match="must be a list"):
             validate_string_choice_value(field, FilterOperator.IN, "active")
 
     def test_non_string_in_list_raises_error(self):
         """Test that non-string items in list raise ValidationError."""
-        field = SpaceField(id="status", type=FieldType.STRING_CHOICE, required=True)
+        field = SpaceField(
+            id="status",
+            type=FieldType.STRING_CHOICE,
+            required=True,
+            options={FieldOption.VALUES: ["active", "pending"]},
+        )
         with pytest.raises(ValidationError, match="must be strings"):
             validate_string_choice_value(field, FilterOperator.IN, ["active", 123])
+
+    def test_invalid_single_value_raises_error(self):
+        """Test that value not in allowed list raises ValidationError."""
+        field = SpaceField(
+            id="status",
+            type=FieldType.STRING_CHOICE,
+            required=True,
+            options={FieldOption.VALUES: ["active", "pending"]},
+        )
+        with pytest.raises(ValidationError, match=r"Invalid choice.*'invalid'.*Allowed values: active, pending"):
+            validate_string_choice_value(field, FilterOperator.EQ, "invalid")
+
+    def test_invalid_value_in_list_raises_error(self):
+        """Test that invalid value in list raises ValidationError."""
+        field = SpaceField(
+            id="status",
+            type=FieldType.STRING_CHOICE,
+            required=True,
+            options={FieldOption.VALUES: ["active", "pending"]},
+        )
+        with pytest.raises(ValidationError, match=r"Invalid choice.*'invalid'.*Allowed values: active, pending"):
+            validate_string_choice_value(field, FilterOperator.IN, ["active", "invalid"])
+
+    def test_missing_values_option_raises_error(self):
+        """Test that missing VALUES option raises ValidationError."""
+        field = SpaceField(id="status", type=FieldType.STRING_CHOICE, required=True)
+        with pytest.raises(ValidationError, match="must have VALUES option defined"):
+            validate_string_choice_value(field, FilterOperator.EQ, "active")
 
 
 class TestValidateTagsValue:
@@ -207,29 +316,44 @@ class TestValidateFilterValue:
 
     def test_null_value_with_eq_accepted(self):
         """Test that null values are accepted with EQ operator."""
+        space = Space(id=uuid4(), slug="test", title="Test", members=[], fields=[])
         field = SpaceField(id="title", type=FieldType.STRING, required=False)
-        validate_filter_value(field, FilterOperator.EQ, None)
+        result = validate_filter_value(field, FilterOperator.EQ, None, space, [])
+        assert result is None
 
     def test_null_value_with_ne_accepted(self):
         """Test that null values are accepted with NE operator."""
+        space = Space(id=uuid4(), slug="test", title="Test", members=[], fields=[])
         field = SpaceField(id="title", type=FieldType.STRING, required=False)
-        validate_filter_value(field, FilterOperator.NE, None)
+        result = validate_filter_value(field, FilterOperator.NE, None, space, [])
+        assert result is None
 
     def test_null_value_with_other_operators_raises_error(self):
         """Test that null values with non-equality operators raise ValidationError."""
+        space = Space(id=uuid4(), slug="test", title="Test", members=[], fields=[])
         field = SpaceField(id="count", type=FieldType.INT, required=False)
         with pytest.raises(ValidationError, match="cannot be used with null values"):
-            validate_filter_value(field, FilterOperator.GT, None)
+            validate_filter_value(field, FilterOperator.GT, None, space, [])
 
     def test_delegates_to_type_specific_validator(self):
         """Test that validation is delegated to type-specific validators."""
+        space = Space(id=uuid4(), slug="test", title="Test", members=[], fields=[])
         string_field = SpaceField(id="title", type=FieldType.STRING, required=True)
-        validate_filter_value(string_field, FilterOperator.EQ, "test")
+        result = validate_filter_value(string_field, FilterOperator.EQ, "test", space, [])
+        assert result == "test"
 
         int_field = SpaceField(id="count", type=FieldType.INT, required=True)
-        validate_filter_value(int_field, FilterOperator.GT, 5)
+        result = validate_filter_value(int_field, FilterOperator.GT, 5, space, [])
+        assert result == 5
 
     def test_string_choice_validator_receives_operator(self):
         """Test that STRING_CHOICE validator gets operator parameter."""
-        field = SpaceField(id="status", type=FieldType.STRING_CHOICE, required=True)
-        validate_filter_value(field, FilterOperator.IN, ["active", "pending"])
+        space = Space(id=uuid4(), slug="test", title="Test", members=[], fields=[])
+        field = SpaceField(
+            id="status",
+            type=FieldType.STRING_CHOICE,
+            required=True,
+            options={FieldOption.VALUES: ["active", "pending"]},
+        )
+        result = validate_filter_value(field, FilterOperator.IN, ["active", "pending"], space, [])
+        assert result == ["active", "pending"]

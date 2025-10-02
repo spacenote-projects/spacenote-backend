@@ -48,6 +48,9 @@ class FilterService(Service):
         if not filter.id or not filter.id.replace("_", "").replace("-", "").isalnum():
             raise ValidationError(f"Invalid filter id: {filter.id}")
 
+        # Get space members for user field validation
+        members = [self.core.services.user.get_user(uid) for uid in space.members]
+
         # Validate all fields in conditions exist in the space or are system fields
         for condition in filter.conditions:
             field = space.get_field(condition.field)
@@ -66,8 +69,8 @@ class FilterService(Service):
                     f"Operator '{condition.operator}' is not valid for field '{condition.field}' of type '{field.type}'"
                 )
 
-            # Validate the value is compatible with the field type and operator
-            validate_filter_value(field, condition.operator, condition.value)
+            # Validate and normalize the value
+            condition.value = validate_filter_value(field, condition.operator, condition.value, space, members)
 
         # Validate all fields in list_fields exist in the space or are system fields
         for field_id in filter.list_fields:
