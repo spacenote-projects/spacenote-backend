@@ -5,20 +5,13 @@ from uuid import UUID
 from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
-from spacenote.core.modules.field.models import FieldType, SpaceField
-from spacenote.core.modules.filter.models import FIELD_TYPE_OPERATORS, Filter
+from spacenote.core.modules.filter.models import FIELD_TYPE_OPERATORS, SYSTEM_FIELD_DEFINITIONS, Filter
 from spacenote.core.modules.filter.query_builder import build_mongo_query, build_mongo_sort
 from spacenote.core.modules.filter.validators import validate_filter_value
 from spacenote.core.modules.note.models import NOTE_SYSTEM_FIELDS
 from spacenote.errors import NotFoundError, ValidationError
 
 logger = logging.getLogger(__name__)
-
-SYSTEM_FIELD_DEFINITIONS: dict[str, SpaceField] = {
-    "number": SpaceField(id="number", type=FieldType.INT, required=True),
-    "created_at": SpaceField(id="created_at", type=FieldType.DATETIME, required=True),
-    "user_id": SpaceField(id="user_id", type=FieldType.USER, required=True),
-}
 
 
 class FilterService(Service):
@@ -56,7 +49,7 @@ class FilterService(Service):
             field = space.get_field(condition.field)
             if field is None:
                 # Check if it's a system field
-                field = SYSTEM_FIELD_DEFINITIONS.get(condition.field)
+                field = SYSTEM_FIELD_DEFINITIONS().get(condition.field)
                 if field is None:
                     raise ValidationError(f"Field '{condition.field}' referenced in filter condition does not exist in space")
 
@@ -134,7 +127,7 @@ class FilterService(Service):
         for condition in filter_def.conditions:
             field = space.get_field(condition.field)
             if field is None:
-                field = SYSTEM_FIELD_DEFINITIONS.get(condition.field)
+                field = SYSTEM_FIELD_DEFINITIONS().get(condition.field)
             if field is not None:
                 field_definitions[condition.field] = field
                 valid_conditions.append(condition)

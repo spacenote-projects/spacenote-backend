@@ -4,7 +4,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from spacenote.core.modules.field.models import FieldType, FieldValueType
+from spacenote.core.modules.field.models import FieldType, FieldValueType, SpaceField
 
 
 class FilterOperator(StrEnum):
@@ -119,3 +119,26 @@ FIELD_TYPE_OPERATORS: dict[FieldType, set[FilterOperator]] = {
         FilterOperator.NE,
     },
 }
+
+
+def get_system_field_definitions() -> dict[str, SpaceField]:
+    """Get system field definitions for filtering.
+
+    Returns definitions lazily to avoid circular import issues.
+    """
+    return {
+        "number": SpaceField(id="number", type=FieldType.INT, required=True),
+        "created_at": SpaceField(id="created_at", type=FieldType.DATETIME, required=True),
+        "user_id": SpaceField(id="user_id", type=FieldType.USER, required=True),
+    }
+
+
+# Cached system field definitions - using list as mutable container to avoid global warning
+_system_field_cache: list[dict[str, SpaceField]] = []
+
+
+def SYSTEM_FIELD_DEFINITIONS() -> dict[str, SpaceField]:  # noqa: N802
+    """Get cached system field definitions."""
+    if not _system_field_cache:
+        _system_field_cache.append(get_system_field_definitions())
+    return _system_field_cache[0]

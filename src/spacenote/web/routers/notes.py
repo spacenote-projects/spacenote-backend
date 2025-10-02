@@ -60,10 +60,54 @@ class UpdateNoteFieldsRequest(BaseModel):
 @router.get(
     "/spaces/{space_slug}/notes",
     summary="List space notes",
-    description="Get paginated notes in a space. Only space members can view notes.",
+    description="""Get paginated notes in a space with optional filtering.
+
+**Filtering options:**
+- Use `filter` parameter to apply a saved filter by ID
+- Use `q` parameter for ad-hoc filtering with syntax: `field:operator:value,field:operator:value`
+
+When both are provided, conditions are combined with AND logic.
+
+**URL Encoding:**
+⚠️ Values containing special characters MUST be URL-encoded:
+- Spaces and symbols: `title:contains:hello%20world`
+- **JSON arrays (for `in`, `nin`, `all` operators) MUST be URL-encoded:**
+  - Raw: `["tag1","tag2"]`
+  - Encoded: `%5B%22tag1%22%2C%22tag2%22%5D`
+  - Full example: `?q=tags:in:%5B%22shopping%22%2C%22groceries%22%5D`
+
+**System fields:**
+Available for filtering without prefix:
+- `number` - Note number
+- `user_id` - Author ID (use with `$me` for current user)
+- `created_at` - Creation timestamp
+- `edited_at` - Last edit timestamp
+- `commented_at` - Last comment timestamp
+- `activity_at` - Last activity timestamp
+
+Custom fields are used directly by their field ID.
+
+**Value types:**
+- Null: `field:eq:null`
+- Boolean: `field:eq:true` or `field:eq:false`
+- Numbers: Parsed automatically (`priority:gte:5`)
+- Strings: Use as-is (`status:eq:active`)
+- Special: `$me` resolves to current user ID
+
+**Examples:**
+- Single condition: `?q=status:eq:active`
+- Multiple conditions: `?q=status:eq:active,priority:gte:5`
+- With URL encoding: `?q=title:contains:hello%20world`
+- Array values (URL-encoded): `?q=tags:in:%5B%22shopping%22%2C%22groceries%22%5D`
+- Special value: `?q=user_id:eq:$me`
+- System fields: `?q=number:gt:100,created_at:gte:2024-01-01`
+- Combined with saved filter: `?filter=my-tasks&q=tags:in:%5B%22urgent%22%5D`
+
+Only space members can view notes.""",
     operation_id="listNotes",
     responses={
         200: {"description": "Paginated list of notes"},
+        400: {"model": ErrorResponse, "description": "Invalid query syntax or validation error"},
         401: {"model": ErrorResponse, "description": "Not authenticated"},
         403: {"model": ErrorResponse, "description": "Not a member of this space"},
         404: {"model": ErrorResponse, "description": "Space not found"},
@@ -76,8 +120,9 @@ async def list_notes(
     limit: Annotated[int, Query(ge=1, description="Maximum items to return")] = 50,
     offset: Annotated[int, Query(ge=0, description="Number of items to skip")] = 0,
     filter: Annotated[str | None, Query(description="Optional filter id to apply")] = None,
+    q: Annotated[str | None, Query(description="Ad-hoc query conditions (field:operator:value,...)")] = None,
 ) -> PaginationResult[Note]:
-    return await app.get_notes_by_space(auth_token, space_slug, limit, offset, filter)
+    return await app.get_notes_by_space(auth_token, space_slug, limit, offset, filter, q)
 
 
 @router.get(

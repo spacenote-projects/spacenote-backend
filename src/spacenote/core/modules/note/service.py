@@ -6,6 +6,9 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
 from spacenote.core.modules.counter.models import CounterType
+from spacenote.core.modules.filter.adhoc import parse_adhoc_query
+from spacenote.core.modules.filter.models import SYSTEM_FIELD_DEFINITIONS
+from spacenote.core.modules.filter.query_builder import build_mongo_query
 from spacenote.core.modules.note.models import Note
 from spacenote.core.modules.telegram.models import TelegramEventType
 from spacenote.core.pagination import PaginationResult
@@ -28,7 +31,13 @@ class NoteService(Service):
         await self._collection.create_index([("space_id", 1)])
 
     async def list_notes(
-        self, space_id: UUID, limit: int = 50, offset: int = 0, filter_id: str | None = None, current_user_id: UUID | None = None
+        self,
+        space_id: UUID,
+        limit: int = 50,
+        offset: int = 0,
+        filter_id: str | None = None,
+        adhoc_query: str | None = None,
+        current_user_id: UUID | None = None,
     ) -> PaginationResult[Note]:
         """Get paginated notes in space, optionally filtered.
 
@@ -37,19 +46,61 @@ class NoteService(Service):
             limit: Maximum number of notes to return
             offset: Number of notes to skip
             filter_id: Optional filter id to apply
+            adhoc_query: Optional ad-hoc query string (field:operator:value,...)
             current_user_id: The ID of the current logged-in user (optional, for $me substitution)
 
         Returns:
             Paginated list of notes
         """
+        # Build base query from saved filter
         if filter_id:
-            # Use filter to build query and sort
             query = self.core.services.filter.build_mongo_query(space_id, filter_id, current_user_id)
             sort_spec = self.core.services.filter.build_mongo_sort(space_id, filter_id)
         else:
-            # Default behavior - all notes sorted by number descending
             query = {"space_id": space_id}
             sort_spec = [("number", -1)]
+
+        # Parse and merge adhoc query if provided
+        if adhoc_query:
+            space = self.core.services.space.get_space(space_id)
+            members = [self.core.services.user.get_user(uid) for uid in space.members]
+            adhoc_conditions = parse_adhoc_query(adhoc_query, space, members)
+
+            # Build MongoDB query from adhoc conditions
+            field_definitions = {}
+            for condition in adhoc_conditions:
+                field_def = space.get_field(condition.field)
+                if field_def is None:
+                    field_def = SYSTEM_FIELD_DEFINITIONS().get(condition.field)
+                if field_def is not None:
+                    field_definitions[condition.field] = field_def
+
+            adhoc_query_dict = build_mongo_query(adhoc_conditions, field_definitions, space_id, current_user_id)
+            adhoc_query_dict.pop("space_id", None)
+
+            # Merge adhoc conditions with base query using AND logic
+            if adhoc_query_dict:
+                if "$and" in query:
+                    # Already has $and - append new conditions
+                    and_list = query["$and"]
+                    if isinstance(and_list, list):
+                        for field_path, condition in adhoc_query_dict.items():
+                            if field_path == "$and" and isinstance(condition, list):
+                                and_list.extend(condition)
+                            else:
+                                and_list.append({field_path: condition})
+                else:
+                    # Create $and with existing and new conditions
+                    existing_conditions = [{k: v} for k, v in query.items() if k != "space_id"]
+                    new_conditions = []
+                    for field_path, condition in adhoc_query_dict.items():
+                        if field_path == "$and" and isinstance(condition, list):
+                            new_conditions.extend(condition)
+                        else:
+                            new_conditions.append({field_path: condition})
+
+                    if existing_conditions or new_conditions:
+                        query = {"space_id": space_id, "$and": existing_conditions + new_conditions}
 
         # Get total count
         total = await self._collection.count_documents(query)
