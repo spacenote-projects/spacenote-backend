@@ -117,6 +117,7 @@ class NoteService(Service):
         logger.debug(
             "list_notes",
             space_id=space_id,
+            adhoc_query=adhoc_query,
             query=query,
             sort=sort_spec,
             total=total,

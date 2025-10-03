@@ -341,7 +341,7 @@ class ExportService(Service):
                         if isinstance(field_value, str):
                             field_user_id = username_to_id.get(field_value)
                             if field_user_id:
-                                imported_fields[field.id] = str(field_user_id)
+                                imported_fields[field.id] = field_user_id
                             else:
                                 raise ValidationError(
                                     f"User '{field_value}' not found in field '{field.id}' for note {export_note.number}"
