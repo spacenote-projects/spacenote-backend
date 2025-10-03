@@ -121,7 +121,6 @@ class TelegramIntegration(MongoModel):
     """
 
     space_id: UUID = Field(..., description="ID of the space this integration belongs to")
-    bot_token: str = Field(..., description="Telegram Bot API token (keep secure!)")
     chat_id: str = Field(..., description="Telegram chat ID (can be numeric ID or @username for public channels)")
     is_enabled: bool = Field(True, description="Global on/off switch for all notifications")
     notifications: dict[TelegramEventType, TelegramNotificationConfig] = Field(

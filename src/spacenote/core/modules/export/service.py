@@ -286,7 +286,6 @@ class ExportService(Service):
         if export_data.space.telegram:
             await self.core.services.telegram.create_telegram_integration(
                 space_id=space.id,
-                bot_token="",
                 chat_id="",
             )
             await self.core.services.telegram.update_telegram_integration(

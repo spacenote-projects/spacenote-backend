@@ -4,6 +4,7 @@ from uuid import UUID
 
 import structlog
 from pymongo.asynchronous.database import AsyncDatabase
+from telegram import Bot
 
 from spacenote.core.core import Service
 from spacenote.core.modules.comment.models import Comment
@@ -32,6 +33,15 @@ class TelegramService(Service):
     async def on_start(self) -> None:
         await self._collection.create_index([("space_id", 1)], unique=True)
         self._notification_tasks: set[asyncio.Task[None]] = set()
+
+        # Create Bot instance if token is configured
+        if self.core.config.telegram_bot_token:
+            self._bot: Bot | None = Bot(token=self.core.config.telegram_bot_token)
+            logger.debug("telegram_bot_initialized")
+        else:
+            self._bot = None
+            logger.debug("telegram_bot_not_configured")
+
         logger.debug("telegram_service_started")
 
     async def get_telegram_integration(self, space_id: UUID) -> TelegramIntegration | None:
@@ -41,7 +51,7 @@ class TelegramService(Service):
             return None
         return TelegramIntegration.model_validate(doc)
 
-    async def create_telegram_integration(self, space_id: UUID, bot_token: str, chat_id: str) -> TelegramIntegration:
+    async def create_telegram_integration(self, space_id: UUID, chat_id: str) -> TelegramIntegration:
         """Create a new Telegram integration for a space."""
         existing = await self.get_telegram_integration(space_id)
         if existing:
@@ -49,7 +59,6 @@ class TelegramService(Service):
 
         integration = TelegramIntegration(
             space_id=space_id,
-            bot_token=bot_token,
             chat_id=chat_id,
         )
 
@@ -60,7 +69,6 @@ class TelegramService(Service):
     async def update_telegram_integration(
         self,
         space_id: UUID,
-        bot_token: str | None = None,
         chat_id: str | None = None,
         is_enabled: bool | None = None,
     ) -> TelegramIntegration:
@@ -70,8 +78,6 @@ class TelegramService(Service):
             raise ValidationError(f"Telegram integration not found for space {space_id}")
 
         update_data: dict[str, Any] = {}
-        if bot_token is not None:
-            update_data["bot_token"] = bot_token
         if chat_id is not None:
             update_data["chat_id"] = chat_id
         if is_enabled is not None:
@@ -155,8 +161,12 @@ class TelegramService(Service):
                 updated_fields=updated_fields,
             )
 
+            if not self._bot:
+                logger.warning("telegram_bot_not_configured", space_id=space_id)
+                return
+
             success, error_msg = await send_telegram_message(
-                integration.bot_token,
+                self._bot,
                 integration.chat_id,
                 rendered_message,
                 parse_mode="HTML",
@@ -221,6 +231,9 @@ class TelegramService(Service):
         if not integration.is_enabled:
             raise ValidationError("Telegram integration is disabled")
 
+        if not self._bot:
+            raise ValidationError("Telegram bot is not configured")
+
         enabled_events = [event_type for event_type, config in integration.notifications.items() if config.enabled]
         if not enabled_events:
             raise ValidationError("All notification events are disabled")
@@ -257,7 +270,7 @@ class TelegramService(Service):
                 full_message = test_header + rendered_message
 
                 success, error_msg = await send_telegram_message(
-                    integration.bot_token,
+                    self._bot,
                     integration.chat_id,
                     full_message,
                     parse_mode="HTML",

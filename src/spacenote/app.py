@@ -254,19 +254,16 @@ class App:
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         return await self._core.services.telegram.get_telegram_integration(space.id)
 
-    async def create_telegram_integration(
-        self, auth_token: AuthToken, space_slug: str, bot_token: str, chat_id: str
-    ) -> TelegramIntegration:
+    async def create_telegram_integration(self, auth_token: AuthToken, space_slug: str, chat_id: str) -> TelegramIntegration:
         """Create Telegram integration for space (members only)."""
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
-        return await self._core.services.telegram.create_telegram_integration(space.id, bot_token, chat_id)
+        return await self._core.services.telegram.create_telegram_integration(space.id, chat_id)
 
     async def update_telegram_integration(
         self,
         auth_token: AuthToken,
         space_slug: str,
-        bot_token: str | None = None,
         chat_id: str | None = None,
         is_enabled: bool | None = None,
     ) -> TelegramIntegration:
@@ -276,7 +273,7 @@ class App:
         provided will be updated, while None values are ignored."""
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
-        return await self._core.services.telegram.update_telegram_integration(space.id, bot_token, chat_id, is_enabled)
+        return await self._core.services.telegram.update_telegram_integration(space.id, chat_id, is_enabled)
 
     async def delete_telegram_integration(self, auth_token: AuthToken, space_slug: str) -> None:
         """Delete Telegram integration for space (members only)."""

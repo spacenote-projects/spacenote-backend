@@ -7,11 +7,11 @@ from telegram.error import TelegramError
 logger = structlog.get_logger(__name__)
 
 
-async def send_telegram_message(token: str, chat_id: str, text: str, parse_mode: str | None = None) -> tuple[bool, str | None]:
+async def send_telegram_message(bot: Bot, chat_id: str, text: str, parse_mode: str | None = None) -> tuple[bool, str | None]:
     """Send a text message to Telegram.
 
     Args:
-        token: Telegram Bot API token
+        bot: Telegram Bot instance
         chat_id: Target chat ID (numeric or @username)
         text: Message text to send
         parse_mode: Optional parse mode (HTML, Markdown, etc.)
@@ -22,7 +22,6 @@ async def send_telegram_message(token: str, chat_id: str, text: str, parse_mode:
         - (False, error_message) on failure
     """
     try:
-        bot = Bot(token=token)
         await bot.send_message(chat_id=chat_id, text=text, parse_mode=parse_mode)
     except TelegramError as e:
         error_msg = str(e)

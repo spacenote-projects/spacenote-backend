@@ -11,6 +11,7 @@ class Config(BaseSettings):
     session_secret_key: str
     cors_origins: list[str] = []
     frontend_url: str  # URL of the frontend application, e.g. https://spacenote.app
+    telegram_bot_token: str | None = None  # Telegram Bot API token for notifications (optional)
     # Build metadata injected during Docker build via environment variables
     git_commit_hash: str = "unknown"  # Git commit hash at build time (for debugging deployments)
     git_commit_date: str = "unknown"  # Git commit date at build time (for tracking release timeline)

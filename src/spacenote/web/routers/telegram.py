@@ -11,14 +11,12 @@ router = APIRouter(tags=["telegram"])
 class CreateTelegramIntegrationRequest(BaseModel):
     """Request to create a new Telegram integration."""
 
-    bot_token: str = Field(..., description="Telegram Bot API token (keep secure!)")
     chat_id: str = Field(..., description="Telegram chat ID (can be numeric ID or @username for public channels)")
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
-                    "bot_token": "1234567890:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi",
                     "chat_id": "-1001234567890",
                 }
             ]
@@ -59,7 +57,7 @@ async def get_telegram_integration(app: AppDep, auth_token: AuthTokenDep, space_
 async def create_telegram_integration(
     app: AppDep, auth_token: AuthTokenDep, space_slug: str, request: CreateTelegramIntegrationRequest
 ) -> TelegramIntegration:
-    return await app.create_telegram_integration(auth_token, space_slug, request.bot_token, request.chat_id)
+    return await app.create_telegram_integration(auth_token, space_slug, request.chat_id)
 
 
 class UpdateTelegramIntegrationRequest(BaseModel):
@@ -68,9 +66,6 @@ class UpdateTelegramIntegrationRequest(BaseModel):
     All fields are optional to support partial updates - only provide the fields you want to change.
     Fields not included in the request will remain unchanged."""
 
-    bot_token: str | None = Field(
-        None, description="New Telegram Bot API token (keep secure!). Optional - only provide to update."
-    )
     chat_id: str | None = Field(None, description="New Telegram chat ID. Optional - only provide to update.")
     is_enabled: bool | None = Field(None, description="Enable or disable all notifications. Optional - only provide to update.")
 
@@ -100,7 +95,7 @@ class UpdateTelegramIntegrationRequest(BaseModel):
 async def update_telegram_integration(
     app: AppDep, auth_token: AuthTokenDep, space_slug: str, request: UpdateTelegramIntegrationRequest
 ) -> TelegramIntegration:
-    return await app.update_telegram_integration(auth_token, space_slug, request.bot_token, request.chat_id, request.is_enabled)
+    return await app.update_telegram_integration(auth_token, space_slug, request.chat_id, request.is_enabled)
 
 
 @router.delete(
