@@ -35,14 +35,10 @@ class TelegramService(Service):
         self._notification_tasks: set[asyncio.Task[None]] = set()
 
         # Create Bot instance if token is configured
-        if self.core.config.telegram_bot_token:
-            self._bot: Bot | None = Bot(token=self.core.config.telegram_bot_token)
-            logger.debug("telegram_bot_initialized")
-        else:
-            self._bot = None
-            logger.debug("telegram_bot_not_configured")
+        self._bot: Bot | None = Bot(token=self.core.config.telegram_bot_token) if self.core.config.telegram_bot_token else None
 
-        logger.debug("telegram_service_started")
+        bot_token = self.core.config.telegram_bot_token[:3] + "..." if self.core.config.telegram_bot_token else "None"
+        logger.info("telegram_service_started", bot_token=bot_token)
 
     async def get_telegram_integration(self, space_id: UUID) -> TelegramIntegration | None:
         """Get Telegram integration for a space."""
