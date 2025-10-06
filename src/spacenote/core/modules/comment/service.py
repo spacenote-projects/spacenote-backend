@@ -8,6 +8,7 @@ from spacenote.core.core import Service
 from spacenote.core.modules.comment.models import Comment
 from spacenote.core.modules.telegram.models import TelegramEventType
 from spacenote.core.pagination import PaginationResult
+from spacenote.errors import ValidationError
 from spacenote.utils import now
 
 logger = structlog.get_logger(__name__)
@@ -26,8 +27,18 @@ class CommentService(Service):
         await self._collection.create_index([("note_id", 1)])
         await self._collection.create_index([("created_at", 1)])
 
-    async def create_comment(self, note_id: UUID, space_id: UUID, user_id: UUID, content: str) -> Comment:
-        """Create comment with auto-increment number per note."""
+    async def create_comment(
+        self, note_id: UUID, space_id: UUID, user_id: UUID, content: str, raw_fields: dict[str, str] | None = None
+    ) -> Comment:
+        """Create comment with auto-increment number per note, optionally updating note fields."""
+        # Validate and update note fields if provided
+        if raw_fields:
+            space = self.core.services.space.get_space(space_id)
+            for field_id in raw_fields:
+                if field_id not in space.comment_editable_fields:
+                    raise ValidationError(f"Field '{field_id}' is not editable when commenting")
+            await self.core.services.note.update_note_fields(note_id, raw_fields, user_id)
+
         last_comment = await self._collection.find_one({"note_id": note_id}, sort=[("number", -1)])
         next_number = 1 if last_comment is None else last_comment["number"] + 1
 

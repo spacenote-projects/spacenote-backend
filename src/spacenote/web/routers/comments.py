@@ -17,6 +17,9 @@ class CreateCommentRequest(BaseModel):
     """Request to create a new comment."""
 
     content: str = Field(..., description="The comment text", min_length=1)
+    raw_fields: dict[str, str] | None = Field(
+        None, description="Optional field updates (must be in space.comment_editable_fields)"
+    )
 
 
 @router.get(
@@ -45,11 +48,15 @@ async def list_comments(
 @router.post(
     "/spaces/{space_slug}/notes/{number}/comments",
     summary="Create comment",
-    description="Add a new comment to a note. Only space members can create comments.",
+    description=(
+        "Add a new comment to a note. Optionally update note fields if configured in "
+        "space.comment_editable_fields. Only space members can create comments."
+    ),
     operation_id="createComment",
     status_code=201,
     responses={
         201: {"description": "Comment created successfully"},
+        400: {"model": ErrorResponse, "description": "Invalid field data or field not in comment_editable_fields"},
         401: {"model": ErrorResponse, "description": "Not authenticated"},
         403: {"model": ErrorResponse, "description": "Not a member of this space"},
         404: {"model": ErrorResponse, "description": "Space or note not found"},
@@ -58,4 +65,4 @@ async def list_comments(
 async def create_comment(
     space_slug: str, number: int, request: CreateCommentRequest, app: AppDep, auth_token: AuthTokenDep
 ) -> Comment:
-    return await app.create_comment(auth_token, space_slug, number, request.content)
+    return await app.create_comment(auth_token, space_slug, number, request.content, request.raw_fields)

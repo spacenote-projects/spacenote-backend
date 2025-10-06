@@ -129,12 +129,14 @@ class App:
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         return await self._core.services.comment.get_note_comments(note.id, limit, offset)
 
-    async def create_comment(self, auth_token: AuthToken, space_slug: str, note_number: int, content: str) -> Comment:
-        """Add comment to note (members only)."""
+    async def create_comment(
+        self, auth_token: AuthToken, space_slug: str, note_number: int, content: str, raw_fields: dict[str, str] | None = None
+    ) -> Comment:
+        """Add comment to note with optional field updates (members only)."""
         space, note = await self._resolve_note(space_slug, note_number)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         current_user = await self._core.services.session.get_authenticated_user(auth_token)
-        return await self._core.services.comment.create_comment(note.id, space.id, current_user.id, content)
+        return await self._core.services.comment.create_comment(note.id, space.id, current_user.id, content, raw_fields)
 
     async def get_current_user(self, auth_token: AuthToken) -> UserView:
         """Get current authenticated user profile."""
@@ -179,6 +181,12 @@ class App:
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         return await self._core.services.space.update_hidden_create_fields(space.id, field_ids)
+
+    async def update_space_comment_editable_fields(self, auth_token: AuthToken, space_slug: str, field_ids: list[str]) -> Space:
+        """Update the comment_editable_fields for a space (members only)."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.space.update_comment_editable_fields(space.id, field_ids)
 
     async def update_space_title(self, auth_token: AuthToken, space_slug: str, title: str) -> Space:
         """Update the title of a space (members only)."""

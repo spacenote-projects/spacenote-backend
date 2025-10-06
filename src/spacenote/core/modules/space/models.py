@@ -26,6 +26,7 @@ class Space(MongoModel):
     fields: list[SpaceField] = Field(default_factory=list)  # Field definitions (order matters)
     list_fields: list[str] = Field(default_factory=list)  # Default columns in list view
     hidden_create_fields: list[str] = Field(default_factory=list)  # Fields hidden in create form
+    comment_editable_fields: list[str] = Field(default_factory=list)  # Fields editable when commenting
     filters: list[Filter] = Field(default_factory=list)  # Saved filter configurations
     templates: SpaceTemplates = SpaceTemplates()  # Templates for customizing views
 

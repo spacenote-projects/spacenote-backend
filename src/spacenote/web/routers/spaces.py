@@ -188,6 +188,35 @@ async def update_space_hidden_create_fields(
     return await app.update_space_hidden_create_fields(auth_token, space_slug, req.field_ids)
 
 
+class UpdateCommentEditableFieldsRequest(BaseModel):
+    """Request to update comment_editable_fields for a space."""
+
+    field_ids: list[str] = Field(..., description="List of field ids that can be edited when commenting")
+
+    model_config = {"json_schema_extra": {"examples": [{"field_ids": ["status", "priority"]}]}}
+
+
+@router.patch(
+    "/spaces/{space_slug}/comment-editable-fields",
+    summary="Update comment editable fields",
+    description=(
+        "Update the fields that can be edited when commenting for a space. Only space members can update comment editable fields."
+    ),
+    operation_id="updateSpaceCommentEditableFields",
+    responses={
+        200: {"description": "Comment editable fields updated successfully"},
+        400: {"model": ErrorResponse, "description": "Invalid field ids"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Not a member of this space"},
+        404: {"model": ErrorResponse, "description": "Space not found"},
+    },
+)
+async def update_space_comment_editable_fields(
+    space_slug: str, req: UpdateCommentEditableFieldsRequest, app: AppDep, auth_token: AuthTokenDep
+) -> Space:
+    return await app.update_space_comment_editable_fields(auth_token, space_slug, req.field_ids)
+
+
 class UpdateSpaceTitleRequest(BaseModel):
     """Request to update space title."""
 

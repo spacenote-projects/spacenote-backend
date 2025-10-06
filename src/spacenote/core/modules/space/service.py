@@ -140,6 +140,17 @@ class SpaceService(Service):
         await self._collection.update_one({"_id": space_id}, {"$set": {"hidden_create_fields": field_ids}})
         return await self.update_space_cache(space_id)
 
+    async def update_comment_editable_fields(self, space_id: UUID, field_ids: list[str]) -> Space:
+        """Update the comment_editable_fields for a space."""
+        space = self.get_space(space_id)
+
+        for field_id in field_ids:
+            if not space.get_field(field_id):
+                raise ValidationError(f"Field '{field_id}' does not exist in space")
+
+        await self._collection.update_one({"_id": space_id}, {"$set": {"comment_editable_fields": field_ids}})
+        return await self.update_space_cache(space_id)
+
     async def update_title(self, space_id: UUID, title: str) -> Space:
         """Update the title of a space."""
         self.get_space(space_id)
