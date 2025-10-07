@@ -217,6 +217,33 @@ async def update_space_comment_editable_fields(
     return await app.update_space_comment_editable_fields(auth_token, space_slug, req.field_ids)
 
 
+class UpdateDefaultFilterRequest(BaseModel):
+    """Request to update default filter for a space."""
+
+    filter_id: str | None = Field(..., description="Filter ID to use as default (null to clear)")
+
+    model_config = {"json_schema_extra": {"examples": [{"filter_id": "my-tasks"}, {"filter_id": None}]}}
+
+
+@router.patch(
+    "/spaces/{space_slug}/default-filter",
+    summary="Update default filter",
+    description="Update the default filter for a space. Set to null to clear. Only space members can update the default filter.",
+    operation_id="updateSpaceDefaultFilter",
+    responses={
+        200: {"description": "Default filter updated successfully"},
+        400: {"model": ErrorResponse, "description": "Invalid filter ID"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Not a member of this space"},
+        404: {"model": ErrorResponse, "description": "Space not found"},
+    },
+)
+async def update_space_default_filter(
+    space_slug: str, req: UpdateDefaultFilterRequest, app: AppDep, auth_token: AuthTokenDep
+) -> Space:
+    return await app.update_space_default_filter(auth_token, space_slug, req.filter_id)
+
+
 class UpdateSpaceTitleRequest(BaseModel):
     """Request to update space title."""
 

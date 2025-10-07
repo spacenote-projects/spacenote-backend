@@ -151,6 +151,16 @@ class SpaceService(Service):
         await self._collection.update_one({"_id": space_id}, {"$set": {"comment_editable_fields": field_ids}})
         return await self.update_space_cache(space_id)
 
+    async def update_default_filter(self, space_id: UUID, filter_id: str | None) -> Space:
+        """Update the default_filter for a space."""
+        space = self.get_space(space_id)
+
+        if filter_id is not None and not space.get_filter(filter_id):
+            raise ValidationError(f"Filter '{filter_id}' does not exist in space")
+
+        await self._collection.update_one({"_id": space_id}, {"$set": {"default_filter": filter_id}})
+        return await self.update_space_cache(space_id)
+
     async def update_title(self, space_id: UUID, title: str) -> Space:
         """Update the title of a space."""
         self.get_space(space_id)

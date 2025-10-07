@@ -28,6 +28,7 @@ class Space(MongoModel):
     hidden_create_fields: list[str] = Field(default_factory=list)  # Fields hidden in create form
     comment_editable_fields: list[str] = Field(default_factory=list)  # Fields editable when commenting
     filters: list[Filter] = Field(default_factory=list)  # Saved filter configurations
+    default_filter: str | None = None  # Default filter ID to apply when viewing notes
     templates: SpaceTemplates = SpaceTemplates()  # Templates for customizing views
 
     def get_field(self, id: str) -> SpaceField | None:

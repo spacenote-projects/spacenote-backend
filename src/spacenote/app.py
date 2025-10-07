@@ -188,6 +188,12 @@ class App:
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         return await self._core.services.space.update_comment_editable_fields(space.id, field_ids)
 
+    async def update_space_default_filter(self, auth_token: AuthToken, space_slug: str, filter_id: str | None) -> Space:
+        """Update the default_filter for a space (members only)."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.space.update_default_filter(space.id, filter_id)
+
     async def update_space_title(self, auth_token: AuthToken, space_slug: str, title: str) -> Space:
         """Update the title of a space (members only)."""
         space = self._resolve_space(space_slug)
