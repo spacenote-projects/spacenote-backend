@@ -19,6 +19,6 @@ class UserView(BaseModel):
     username: str = Field(..., description="Username")
 
     @classmethod
-    def from_domain(cls, user: User) -> "UserView":
+    def from_domain(cls, user: User) -> UserView:
         """Create view model from domain model."""
         return cls(id=user.id, username=user.username)

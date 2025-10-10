@@ -6,7 +6,7 @@ SpaceNote is organized as a multi-repository project:
 - **spacenote-frontend** - React application
 
 ## Tech Stack
-- **Python 3.13**
+- **Python 3.14**
 - **MongoDB** - Document database
 - **FastAPI** - Web framework
 
