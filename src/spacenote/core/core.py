@@ -46,6 +46,7 @@ class Services:
     from spacenote.core.modules.export.service import ExportService  # noqa: PLC0415
     from spacenote.core.modules.field.service import FieldService  # noqa: PLC0415
     from spacenote.core.modules.filter.service import FilterService  # noqa: PLC0415
+    from spacenote.core.modules.llm.service import LLMService  # noqa: PLC0415
     from spacenote.core.modules.note.service import NoteService  # noqa: PLC0415
     from spacenote.core.modules.session.service import SessionService  # noqa: PLC0415
     from spacenote.core.modules.space.service import SpaceService  # noqa: PLC0415
@@ -63,6 +64,7 @@ class Services:
     comment: CommentService
     export: ExportService
     telegram: TelegramService
+    llm: LLMService
 
     def __init__(self, database: AsyncDatabase[dict[str, Any]]) -> None:
         """Initialize all services automatically using service configuration."""
@@ -83,6 +85,7 @@ class Services:
             ("comment", "spacenote.core.modules.comment.service", "CommentService"),
             ("export", "spacenote.core.modules.export.service", "ExportService"),
             ("telegram", "spacenote.core.modules.telegram.service", "TelegramService"),
+            ("llm", "spacenote.core.modules.llm.service", "LLMService"),
         ]
 
         # Dynamically import and instantiate services

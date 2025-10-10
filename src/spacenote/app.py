@@ -7,6 +7,7 @@ from spacenote.core.modules.comment.models import Comment
 from spacenote.core.modules.export.models import ExportData
 from spacenote.core.modules.field.models import SpaceField
 from spacenote.core.modules.filter.models import Filter
+from spacenote.core.modules.llm.models import ParsedApiCall
 from spacenote.core.modules.note.models import Note
 from spacenote.core.modules.session.models import AuthToken
 from spacenote.core.modules.space.models import Space
@@ -313,6 +314,13 @@ class App:
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         return await self._core.services.telegram.send_test_message(space.id)
+
+    # === LLM integration ===
+    async def parse_llm_intent(self, auth_token: AuthToken, text: str) -> ParsedApiCall:
+        """Parse natural language into API call."""
+        current_user = await self._core.services.access.ensure_authenticated(auth_token)
+        available_spaces = self._core.services.space.get_spaces_by_member(current_user.id)
+        return self._core.services.llm.parse_intent(text, available_spaces, current_user.id)
 
     # === Private resolver methods ===
     def _resolve_space(self, slug: str) -> Space:
