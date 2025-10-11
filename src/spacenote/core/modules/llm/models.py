@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -21,3 +21,12 @@ class ParsedApiCall(BaseModel):
             ]
         }
     }
+
+
+class IntentClassification(BaseModel):
+    """Classification of user intent from natural language."""
+
+    space_slug: str = Field(..., description="Slug of the space to operate on")
+    operation_type: Literal["create_note", "update_note", "create_comment"] = Field(
+        ..., description="Type of operation to perform"
+    )
