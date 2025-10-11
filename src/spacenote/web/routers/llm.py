@@ -11,11 +11,7 @@ class ParseRequest(BaseModel):
     text: str
 
 
-@router.post("/parse", response_model=ParsedApiCall)
-async def parse_intent(
-    request: ParseRequest,
-    app: AppDep,
-    auth_token: AuthTokenDep,
-) -> ParsedApiCall:
+@router.post("/parse")
+async def parse_intent(request: ParseRequest, app: AppDep, auth_token: AuthTokenDep) -> ParsedApiCall:
     """Parse natural language into ready API call"""
     return await app.parse_llm_intent(auth_token, request.text)
