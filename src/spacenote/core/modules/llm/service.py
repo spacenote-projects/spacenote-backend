@@ -119,6 +119,11 @@ class LLMService(Service):
         """
         start_time = time.time()
         system_prompt = build_intent_classification_prompt(available_spaces)
+        llm_response_content = None
+        parsed_data = None
+        space_id = None
+        usage_tokens = None
+        operation_type_enum = None
 
         try:
             if not self.core.config.llm_api_key:
@@ -138,15 +143,21 @@ class LLMService(Service):
 
             duration_ms = int((time.time() - start_time) * 1000)
 
-            content = response.choices[0].message.content
-            if not content:
+            usage = getattr(response, "usage", None)
+            if usage:
+                usage_tokens = (usage.prompt_tokens, usage.completion_tokens, usage.total_tokens)
+
+            llm_response_content = response.choices[0].message.content
+            if not llm_response_content:
                 raise ValidationError("LLM returned empty response")  # noqa: TRY301
 
-            parsed_data = parse_line_based_response(content)
+            parsed_data = parse_line_based_response(llm_response_content)
 
             operation_type = parsed_data.get("operation_type")
             if not operation_type:
                 raise ValidationError("Missing operation_type in LLM response")  # noqa: TRY301
+
+            operation_type_enum = LLMOperationType(operation_type)
 
             space_slug = parsed_data.get("space_slug")
             if not space_slug:
@@ -156,23 +167,23 @@ class LLMService(Service):
                 raise ValidationError(f"Space '{space_slug}' not found")  # noqa: TRY301
 
             space = next(s for s in available_spaces if s.slug == space_slug)
+            space_id = space.id
 
             result = self._build_api_call(operation_type, space_slug, parsed_data)
 
-            usage = getattr(response, "usage", None)
             log = LLMLog(
                 user_input=text,
-                llm_response=content,
+                llm_response=llm_response_content,
                 parsed_response=parsed_data,
                 user_id=user_id,
-                operation_type=LLMOperationType.PARSE_INTENT,
-                space_id=space.id,
+                operation_type=operation_type_enum,
+                space_id=space_id,
                 system_prompt=system_prompt,
                 context_data={"available_space_ids": [str(s.id) for s in available_spaces]},
                 model=self.core.config.llm_model,
-                prompt_tokens=usage.prompt_tokens if usage else None,
-                completion_tokens=usage.completion_tokens if usage else None,
-                total_tokens=usage.total_tokens if usage else None,
+                prompt_tokens=usage_tokens[0] if usage_tokens else None,
+                completion_tokens=usage_tokens[1] if usage_tokens else None,
+                total_tokens=usage_tokens[2] if usage_tokens else None,
                 error_message=None,
                 duration_ms=duration_ms,
             )
@@ -184,17 +195,17 @@ class LLMService(Service):
             duration_ms = int((time.time() - start_time) * 1000)
             log = LLMLog(
                 user_input=text,
-                llm_response=None,
-                parsed_response=None,
+                llm_response=llm_response_content,
+                parsed_response=parsed_data,
                 user_id=user_id,
-                operation_type=LLMOperationType.PARSE_INTENT,
-                space_id=None,
+                operation_type=operation_type_enum,
+                space_id=space_id,
                 system_prompt=system_prompt,
                 context_data={"available_space_ids": [str(s.id) for s in available_spaces]},
                 model=self.core.config.llm_model,
-                prompt_tokens=None,
-                completion_tokens=None,
-                total_tokens=None,
+                prompt_tokens=usage_tokens[0] if usage_tokens else None,
+                completion_tokens=usage_tokens[1] if usage_tokens else None,
+                total_tokens=usage_tokens[2] if usage_tokens else None,
                 error_message=str(e),
                 duration_ms=duration_ms,
             )

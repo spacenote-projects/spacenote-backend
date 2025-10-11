@@ -54,7 +54,7 @@ SUPPORTED OPERATIONS:
 
    Example response:
    operation_type: create_note
-   space_slug: mf-tasks
+   space_slug: my-tasks
    title: Buy milk
    tags: shopping, food
 
@@ -63,7 +63,7 @@ SUPPORTED OPERATIONS:
 
    Example response:
    operation_type: update_note
-   space_slug: mf-tasks
+   space_slug: my-tasks
    note_number: 5
    status: completed
 
@@ -72,7 +72,7 @@ SUPPORTED OPERATIONS:
 
    Example response:
    operation_type: create_comment
-   space_slug: mf-tasks
+   space_slug: my-tasks
    note_number: 3
    content: This is completed
 
