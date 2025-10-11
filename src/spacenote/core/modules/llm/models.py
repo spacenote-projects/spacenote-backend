@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Annotated, Any, Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -36,7 +36,13 @@ class ParsedApiCall(BaseModel):
 
 
 class CreateNoteIntent(BaseModel):
-    """Intent to create a new note in a space."""
+    """
+    Intent to create a new note in a space.
+
+    NOTE: This model serves as schema documentation and reference.
+    It is NOT used for parsing LLM responses (we use line-based parsing instead).
+    See utils.parse_line_based_response() for the actual parsing logic.
+    """
 
     operation_type: Literal["create_note"] = "create_note"
     space_slug: str = Field(..., description="Slug of the space to create note in")
@@ -44,7 +50,13 @@ class CreateNoteIntent(BaseModel):
 
 
 class UpdateNoteIntent(BaseModel):
-    """Intent to update an existing note."""
+    """
+    Intent to update an existing note.
+
+    NOTE: This model serves as schema documentation and reference.
+    It is NOT used for parsing LLM responses (we use line-based parsing instead).
+    See utils.parse_line_based_response() for the actual parsing logic.
+    """
 
     operation_type: Literal["update_note"] = "update_note"
     space_slug: str = Field(..., description="Slug of the space containing the note")
@@ -53,7 +65,13 @@ class UpdateNoteIntent(BaseModel):
 
 
 class CreateCommentIntent(BaseModel):
-    """Intent to create a comment on a note."""
+    """
+    Intent to create a comment on a note.
+
+    NOTE: This model serves as schema documentation and reference.
+    It is NOT used for parsing LLM responses (we use line-based parsing instead).
+    See utils.parse_line_based_response() for the actual parsing logic.
+    """
 
     operation_type: Literal["create_comment"] = "create_comment"
     space_slug: str = Field(..., description="Slug of the space containing the note")
@@ -61,34 +79,19 @@ class CreateCommentIntent(BaseModel):
     content: str = Field(..., description="Comment text content")
 
 
-Intent = Annotated[
-    CreateNoteIntent | UpdateNoteIntent | CreateCommentIntent,
-    Field(discriminator="operation_type"),
-]
-
-
-class IntentClassification(BaseModel):
-    """Wrapper model for LLM response containing classified intent."""
-
-    intent: Intent
-
-
 class LLMLog(MongoModel):
     """Log of LLM API interaction."""
 
-    user_input: str
-    llm_response: str | None
-    parsed_response: dict[str, Any] | None = None
-
     user_id: UUID
-    created_at: datetime = Field(default_factory=now)
-
-    operation_type: LLMOperationType
-    space_id: UUID | None = None
+    user_input: str
     system_prompt: str
+    model: str
     context_data: dict[str, Any] | None = None
 
-    model: str
+    llm_response: str | None
+    parsed_response: dict[str, Any] | None = None
+    operation_type: LLMOperationType
+    space_id: UUID | None = None
 
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
@@ -96,3 +99,4 @@ class LLMLog(MongoModel):
 
     error_message: str | None = None
     duration_ms: int
+    created_at: datetime = Field(default_factory=now)

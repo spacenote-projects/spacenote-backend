@@ -1,5 +1,5 @@
 import time
-from typing import Any
+from typing import Any, Protocol
 from uuid import UUID
 
 import litellm
@@ -12,6 +12,14 @@ from spacenote.core.modules.llm.utils import parse_line_based_response
 from spacenote.core.modules.space.models import Space
 from spacenote.core.pagination import PaginationResult
 from spacenote.errors import ValidationError
+
+
+class LLMUsage(Protocol):
+    """Protocol for LLM usage statistics from litellm response."""
+
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
 
 
 class LLMService(Service):
@@ -27,10 +35,6 @@ class LLMService(Service):
         await self._collection.create_index([("created_at", -1)])
         await self._collection.create_index([("space_id", 1)])
 
-    async def create_log(self, log: LLMLog) -> None:
-        """Create a new LLM log entry."""
-        await self._collection.insert_one(log.to_mongo())
-
     async def get_logs(self, limit: int = 50, offset: int = 0) -> PaginationResult[LLMLog]:
         """Get paginated LLM logs."""
         total = await self._collection.count_documents({})
@@ -40,9 +44,70 @@ class LLMService(Service):
 
         return PaginationResult(items=items, total=total, limit=limit, offset=offset)
 
-    async def parse_intent(self, text: str, available_spaces: list[Space], user_id: UUID) -> ParsedApiCall:  # noqa: PLR0915
+    def _build_api_call(self, operation_type: str, space_slug: str, parsed_data: dict[str, str]) -> ParsedApiCall:
+        """
+        Build ParsedApiCall from parsed LLM response.
+
+        Args:
+            operation_type: Type of operation (create_note, update_note, create_comment)
+            space_slug: Space identifier
+            parsed_data: Raw parsed data from LLM response
+
+        Returns:
+            ParsedApiCall with method, path, and body
+        """
+        if operation_type == "create_note":
+            fields = {k: v for k, v in parsed_data.items() if k not in ("operation_type", "space_slug")}
+            return ParsedApiCall(
+                method="POST",
+                path=f"/api/v1/spaces/{space_slug}/notes",
+                body={"raw_fields": fields},
+            )
+
+        if operation_type == "update_note":
+            note_number_str = parsed_data.get("note_number")
+            if not note_number_str:
+                raise ValidationError("Missing note_number for update_note operation")
+            try:
+                note_number = int(note_number_str)
+            except ValueError as e:
+                raise ValidationError(f"Invalid note_number: {note_number_str}") from e
+
+            fields = {k: v for k, v in parsed_data.items() if k not in ("operation_type", "space_slug", "note_number")}
+            return ParsedApiCall(
+                method="PATCH",
+                path=f"/api/v1/spaces/{space_slug}/notes/{note_number}",
+                body={"raw_fields": fields},
+            )
+
+        if operation_type == "create_comment":
+            note_number_str = parsed_data.get("note_number")
+            if not note_number_str:
+                raise ValidationError("Missing note_number for create_comment operation")
+            try:
+                note_number = int(note_number_str)
+            except ValueError as e:
+                raise ValidationError(f"Invalid note_number: {note_number_str}") from e
+
+            content_text = parsed_data.get("content")
+            if not content_text:
+                raise ValidationError("Missing content for create_comment operation")
+
+            return ParsedApiCall(
+                method="POST",
+                path=f"/api/v1/spaces/{space_slug}/notes/{note_number}/comments",
+                body={"content": content_text},
+            )
+
+        raise ValidationError(f"Unknown operation type: {operation_type}")
+
+    async def parse_intent(self, text: str, available_spaces: list[Space], user_id: UUID) -> ParsedApiCall:
         """
         Parse natural language into ready-to-use API call.
+
+        Uses line-based format instead of JSON for LLM responses because it's more
+        resilient to LLM errors (malformed JSON breaks completely, line-based can
+        skip bad lines and recover).
 
         Args:
             text: User's natural language input
@@ -92,48 +157,7 @@ class LLMService(Service):
 
             space = next(s for s in available_spaces if s.slug == space_slug)
 
-            if operation_type == "create_note":
-                fields = {k: v for k, v in parsed_data.items() if k not in ("operation_type", "space_slug")}
-                result = ParsedApiCall(
-                    method="POST",
-                    path=f"/api/v1/spaces/{space_slug}/notes",
-                    body={"raw_fields": fields},
-                )
-            elif operation_type == "update_note":
-                note_number_str = parsed_data.get("note_number")
-                if not note_number_str:
-                    raise ValidationError("Missing note_number for update_note operation")  # noqa: TRY301
-                try:
-                    note_number = int(note_number_str)
-                except ValueError as e:
-                    raise ValidationError(f"Invalid note_number: {note_number_str}") from e
-
-                fields = {k: v for k, v in parsed_data.items() if k not in ("operation_type", "space_slug", "note_number")}
-                result = ParsedApiCall(
-                    method="PATCH",
-                    path=f"/api/v1/spaces/{space_slug}/notes/{note_number}",
-                    body={"raw_fields": fields},
-                )
-            elif operation_type == "create_comment":
-                note_number_str = parsed_data.get("note_number")
-                if not note_number_str:
-                    raise ValidationError("Missing note_number for create_comment operation")  # noqa: TRY301
-                try:
-                    note_number = int(note_number_str)
-                except ValueError as e:
-                    raise ValidationError(f"Invalid note_number: {note_number_str}") from e
-
-                content_text = parsed_data.get("content")
-                if not content_text:
-                    raise ValidationError("Missing content for create_comment operation")  # noqa: TRY301
-
-                result = ParsedApiCall(
-                    method="POST",
-                    path=f"/api/v1/spaces/{space_slug}/notes/{note_number}/comments",
-                    body={"content": content_text},
-                )
-            else:
-                raise ValidationError(f"Unknown operation type: {operation_type}")  # noqa: TRY301
+            result = self._build_api_call(operation_type, space_slug, parsed_data)
 
             usage = getattr(response, "usage", None)
             log = LLMLog(
@@ -152,7 +176,7 @@ class LLMService(Service):
                 error_message=None,
                 duration_ms=duration_ms,
             )
-            await self.create_log(log)
+            await self._collection.insert_one(log.to_mongo())
 
             return result  # noqa: TRY300
 
@@ -174,5 +198,5 @@ class LLMService(Service):
                 error_message=str(e),
                 duration_ms=duration_ms,
             )
-            await self.create_log(log)
+            await self._collection.insert_one(log.to_mongo())
             raise
