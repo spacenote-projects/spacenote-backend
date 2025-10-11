@@ -21,13 +21,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `just dev` - Never run this command. It's for humans only.
 - `just lint` - Run linters after making code changes
 
-## API Testing
+## Testing & Validation
 
-- **Use Python with requests library** for testing API endpoints instead of curl
-- Claude Code has execution restrictions - only certain commands can run without user approval
-- While `curl` is partially allowed, complex curl commands (with POST data, headers, etc.) require approval each time
-- Python is fully allowed, making it better for API testing without interrupting the user
-- Example: `python3 -c "import requests; r = requests.post('http://localhost:3101/api/v1/endpoint', json={'key': 'value'}, headers={'Authorization': 'Bearer TOKEN'}); print(r.json())"`
+- **NEVER write temporary test scripts** - Do not create one-off Python scripts to test API endpoints
+- **NEVER manually test through API calls** - Do not use Python requests or curl to manually verify functionality
+- **Only run existing tests** - After code changes, run `just test` to verify nothing broke
+- **Let the user test** - The user will test the actual functionality themselves
+- **Focus on implementation** - Your job is to write the code, not to verify it works through manual testing
+
+If you want to verify your changes:
+1. Run existing automated tests with `just test`
+2. That's it. Stop there.
+
+Manual API testing wastes the user's time and provides no value.
 
 ## Testing Guidelines
 

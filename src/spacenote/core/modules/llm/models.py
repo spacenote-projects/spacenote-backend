@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -23,10 +23,39 @@ class ParsedApiCall(BaseModel):
     }
 
 
-class IntentClassification(BaseModel):
-    """Classification of user intent from natural language."""
+class CreateNoteIntent(BaseModel):
+    """Intent to create a new note in a space."""
 
-    space_slug: str = Field(..., description="Slug of the space to operate on")
-    operation_type: Literal["create_note", "update_note", "create_comment"] = Field(
-        ..., description="Type of operation to perform"
-    )
+    operation_type: Literal["create_note"] = "create_note"
+    space_slug: str = Field(..., description="Slug of the space to create note in")
+    fields: dict[str, str] = Field(..., description="Field values for the new note as strings")
+
+
+class UpdateNoteIntent(BaseModel):
+    """Intent to update an existing note."""
+
+    operation_type: Literal["update_note"] = "update_note"
+    space_slug: str = Field(..., description="Slug of the space containing the note")
+    note_number: int = Field(..., description="Note number to update")
+    fields: dict[str, str] = Field(..., description="Field values to update as strings")
+
+
+class CreateCommentIntent(BaseModel):
+    """Intent to create a comment on a note."""
+
+    operation_type: Literal["create_comment"] = "create_comment"
+    space_slug: str = Field(..., description="Slug of the space containing the note")
+    note_number: int = Field(..., description="Note number to comment on")
+    content: str = Field(..., description="Comment text content")
+
+
+Intent = Annotated[
+    CreateNoteIntent | UpdateNoteIntent | CreateCommentIntent,
+    Field(discriminator="operation_type"),
+]
+
+
+class IntentClassification(BaseModel):
+    """Wrapper model for LLM response containing classified intent."""
+
+    intent: Intent

@@ -320,7 +320,7 @@ class App:
         """Parse natural language into API call."""
         current_user = await self._core.services.access.ensure_authenticated(auth_token)
         available_spaces = self._core.services.space.get_spaces_by_member(current_user.id)
-        return self._core.services.llm.parse_intent(text, available_spaces, current_user.id)
+        return self._core.services.llm.parse_intent(text, available_spaces)
 
     # === Private resolver methods ===
     def _resolve_space(self, slug: str) -> Space:
