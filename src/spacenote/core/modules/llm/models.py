@@ -1,6 +1,18 @@
+from datetime import datetime
+from enum import Enum
 from typing import Annotated, Any, Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field
+
+from spacenote.core.db import MongoModel
+from spacenote.utils import now
+
+
+class LLMOperationType(str, Enum):
+    """LLM operation types."""
+
+    PARSE_INTENT = "parse_intent"
 
 
 class ParsedApiCall(BaseModel):
@@ -59,3 +71,28 @@ class IntentClassification(BaseModel):
     """Wrapper model for LLM response containing classified intent."""
 
     intent: Intent
+
+
+class LLMLog(MongoModel):
+    """Log of LLM API interaction."""
+
+    user_input: str
+    llm_response: str | None
+    parsed_response: dict[str, Any] | None = None
+
+    user_id: UUID
+    created_at: datetime = Field(default_factory=now)
+
+    operation_type: LLMOperationType
+    space_id: UUID | None = None
+    system_prompt: str
+    context_data: dict[str, Any] | None = None
+
+    model: str
+
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
+
+    error_message: str | None = None
+    duration_ms: int

@@ -1,102 +1,178 @@
+import time
+from typing import Any
+from uuid import UUID
+
 import litellm
+from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
-from spacenote.core.modules.llm.models import ParsedApiCall
+from spacenote.core.modules.llm.models import LLMLog, LLMOperationType, ParsedApiCall
 from spacenote.core.modules.llm.prompts import build_intent_classification_prompt
 from spacenote.core.modules.llm.utils import parse_line_based_response
 from spacenote.core.modules.space.models import Space
+from spacenote.core.pagination import PaginationResult
 from spacenote.errors import ValidationError
 
 
 class LLMService(Service):
     """LLM service for parsing natural language into API calls"""
 
-    def parse_intent(self, text: str, available_spaces: list[Space]) -> ParsedApiCall:
+    def __init__(self, database: AsyncDatabase[dict[str, Any]]) -> None:
+        super().__init__(database)
+        self._collection = database.get_collection("llm_logs")
+
+    async def on_start(self) -> None:
+        """Create indexes for LLM logs."""
+        await self._collection.create_index([("user_id", 1)])
+        await self._collection.create_index([("created_at", -1)])
+        await self._collection.create_index([("space_id", 1)])
+
+    async def create_log(self, log: LLMLog) -> None:
+        """Create a new LLM log entry."""
+        await self._collection.insert_one(log.to_mongo())
+
+    async def get_logs(self, limit: int = 50, offset: int = 0) -> PaginationResult[LLMLog]:
+        """Get paginated LLM logs."""
+        total = await self._collection.count_documents({})
+
+        cursor = self._collection.find({}).sort("created_at", -1).skip(offset).limit(limit)
+        items = await LLMLog.list_cursor(cursor)
+
+        return PaginationResult(items=items, total=total, limit=limit, offset=offset)
+
+    async def parse_intent(self, text: str, available_spaces: list[Space], user_id: UUID) -> ParsedApiCall:  # noqa: PLR0915
         """
         Parse natural language into ready-to-use API call.
 
         Args:
             text: User's natural language input
             available_spaces: List of Space objects user has access to
+            user_id: User ID for logging
 
         Returns:
             ParsedApiCall with method, path, and body
         """
-        if not self.core.config.llm_api_key:
-            raise ValidationError("LLM API key not configured")
-
-        if not available_spaces:
-            raise ValidationError("No spaces available")
-
+        start_time = time.time()
         system_prompt = build_intent_classification_prompt(available_spaces)
 
-        response = litellm.completion(
-            model=self.core.config.llm_model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": text},
-            ],
-            api_key=self.core.config.llm_api_key,
-        )
+        try:
+            if not self.core.config.llm_api_key:
+                raise ValidationError("LLM API key not configured")  # noqa: TRY301
 
-        content = response.choices[0].message.content
-        if not content:
-            raise ValidationError("LLM returned empty response")
+            if not available_spaces:
+                raise ValidationError("No spaces available")  # noqa: TRY301
 
-        parsed_data = parse_line_based_response(content)
-
-        operation_type = parsed_data.get("operation_type")
-        if not operation_type:
-            raise ValidationError("Missing operation_type in LLM response")
-
-        space_slug = parsed_data.get("space_slug")
-        if not space_slug:
-            raise ValidationError("Missing space_slug in LLM response")
-
-        if space_slug not in [space.slug for space in available_spaces]:
-            raise ValidationError(f"Space '{space_slug}' not found")
-
-        if operation_type == "create_note":
-            fields = {k: v for k, v in parsed_data.items() if k not in ("operation_type", "space_slug")}
-            return ParsedApiCall(
-                method="POST",
-                path=f"/api/v1/spaces/{space_slug}/notes",
-                body={"raw_fields": fields},
+            response = litellm.completion(
+                model=self.core.config.llm_model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": text},
+                ],
+                api_key=self.core.config.llm_api_key,
             )
 
-        if operation_type == "update_note":
-            note_number_str = parsed_data.get("note_number")
-            if not note_number_str:
-                raise ValidationError("Missing note_number for update_note operation")
-            try:
-                note_number = int(note_number_str)
-            except ValueError as e:
-                raise ValidationError(f"Invalid note_number: {note_number_str}") from e
+            duration_ms = int((time.time() - start_time) * 1000)
 
-            fields = {k: v for k, v in parsed_data.items() if k not in ("operation_type", "space_slug", "note_number")}
-            return ParsedApiCall(
-                method="PATCH",
-                path=f"/api/v1/spaces/{space_slug}/notes/{note_number}",
-                body={"raw_fields": fields},
+            content = response.choices[0].message.content
+            if not content:
+                raise ValidationError("LLM returned empty response")  # noqa: TRY301
+
+            parsed_data = parse_line_based_response(content)
+
+            operation_type = parsed_data.get("operation_type")
+            if not operation_type:
+                raise ValidationError("Missing operation_type in LLM response")  # noqa: TRY301
+
+            space_slug = parsed_data.get("space_slug")
+            if not space_slug:
+                raise ValidationError("Missing space_slug in LLM response")  # noqa: TRY301
+
+            if space_slug not in [space.slug for space in available_spaces]:
+                raise ValidationError(f"Space '{space_slug}' not found")  # noqa: TRY301
+
+            space = next(s for s in available_spaces if s.slug == space_slug)
+
+            if operation_type == "create_note":
+                fields = {k: v for k, v in parsed_data.items() if k not in ("operation_type", "space_slug")}
+                result = ParsedApiCall(
+                    method="POST",
+                    path=f"/api/v1/spaces/{space_slug}/notes",
+                    body={"raw_fields": fields},
+                )
+            elif operation_type == "update_note":
+                note_number_str = parsed_data.get("note_number")
+                if not note_number_str:
+                    raise ValidationError("Missing note_number for update_note operation")  # noqa: TRY301
+                try:
+                    note_number = int(note_number_str)
+                except ValueError as e:
+                    raise ValidationError(f"Invalid note_number: {note_number_str}") from e
+
+                fields = {k: v for k, v in parsed_data.items() if k not in ("operation_type", "space_slug", "note_number")}
+                result = ParsedApiCall(
+                    method="PATCH",
+                    path=f"/api/v1/spaces/{space_slug}/notes/{note_number}",
+                    body={"raw_fields": fields},
+                )
+            elif operation_type == "create_comment":
+                note_number_str = parsed_data.get("note_number")
+                if not note_number_str:
+                    raise ValidationError("Missing note_number for create_comment operation")  # noqa: TRY301
+                try:
+                    note_number = int(note_number_str)
+                except ValueError as e:
+                    raise ValidationError(f"Invalid note_number: {note_number_str}") from e
+
+                content_text = parsed_data.get("content")
+                if not content_text:
+                    raise ValidationError("Missing content for create_comment operation")  # noqa: TRY301
+
+                result = ParsedApiCall(
+                    method="POST",
+                    path=f"/api/v1/spaces/{space_slug}/notes/{note_number}/comments",
+                    body={"content": content_text},
+                )
+            else:
+                raise ValidationError(f"Unknown operation type: {operation_type}")  # noqa: TRY301
+
+            usage = getattr(response, "usage", None)
+            log = LLMLog(
+                user_input=text,
+                llm_response=content,
+                parsed_response=parsed_data,
+                user_id=user_id,
+                operation_type=LLMOperationType.PARSE_INTENT,
+                space_id=space.id,
+                system_prompt=system_prompt,
+                context_data={"available_space_ids": [str(s.id) for s in available_spaces]},
+                model=self.core.config.llm_model,
+                prompt_tokens=usage.prompt_tokens if usage else None,
+                completion_tokens=usage.completion_tokens if usage else None,
+                total_tokens=usage.total_tokens if usage else None,
+                error_message=None,
+                duration_ms=duration_ms,
             )
+            await self.create_log(log)
 
-        if operation_type == "create_comment":
-            note_number_str = parsed_data.get("note_number")
-            if not note_number_str:
-                raise ValidationError("Missing note_number for create_comment operation")
-            try:
-                note_number = int(note_number_str)
-            except ValueError as e:
-                raise ValidationError(f"Invalid note_number: {note_number_str}") from e
+            return result  # noqa: TRY300
 
-            content_text = parsed_data.get("content")
-            if not content_text:
-                raise ValidationError("Missing content for create_comment operation")
-
-            return ParsedApiCall(
-                method="POST",
-                path=f"/api/v1/spaces/{space_slug}/notes/{note_number}/comments",
-                body={"content": content_text},
+        except Exception as e:
+            duration_ms = int((time.time() - start_time) * 1000)
+            log = LLMLog(
+                user_input=text,
+                llm_response=None,
+                parsed_response=None,
+                user_id=user_id,
+                operation_type=LLMOperationType.PARSE_INTENT,
+                space_id=None,
+                system_prompt=system_prompt,
+                context_data={"available_space_ids": [str(s.id) for s in available_spaces]},
+                model=self.core.config.llm_model,
+                prompt_tokens=None,
+                completion_tokens=None,
+                total_tokens=None,
+                error_message=str(e),
+                duration_ms=duration_ms,
             )
-
-        raise ValidationError(f"Unknown operation type: {operation_type}")
+            await self.create_log(log)
+            raise

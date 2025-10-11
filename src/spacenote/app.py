@@ -7,7 +7,7 @@ from spacenote.core.modules.comment.models import Comment
 from spacenote.core.modules.export.models import ExportData
 from spacenote.core.modules.field.models import SpaceField
 from spacenote.core.modules.filter.models import Filter
-from spacenote.core.modules.llm.models import ParsedApiCall
+from spacenote.core.modules.llm.models import LLMLog, ParsedApiCall
 from spacenote.core.modules.note.models import Note
 from spacenote.core.modules.session.models import AuthToken
 from spacenote.core.modules.space.models import Space
@@ -320,7 +320,12 @@ class App:
         """Parse natural language into API call."""
         current_user = await self._core.services.access.ensure_authenticated(auth_token)
         available_spaces = self._core.services.space.get_spaces_by_member(current_user.id)
-        return self._core.services.llm.parse_intent(text, available_spaces)
+        return await self._core.services.llm.parse_intent(text, available_spaces, current_user.id)
+
+    async def get_llm_logs(self, auth_token: AuthToken, limit: int = 50, offset: int = 0) -> PaginationResult[LLMLog]:
+        """Get paginated LLM logs (admin only)."""
+        await self._core.services.access.ensure_admin(auth_token)
+        return await self._core.services.llm.get_logs(limit, offset)
 
     # === Private resolver methods ===
     def _resolve_space(self, slug: str) -> Space:
