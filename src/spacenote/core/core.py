@@ -125,7 +125,7 @@ class Core:
     def __init__(self, config: Config) -> None:
         """Initialize core with config, MongoDB, and auto-register services."""
         self.config = config
-        self.mongo_client = AsyncMongoClient(config.database_url, uuidRepresentation="standard")
+        self.mongo_client = AsyncMongoClient(config.database_url, uuidRepresentation="standard", tz_aware=True)
         self.database = self.mongo_client.get_database(urlparse(config.database_url).path[1:])
         self.services = Services(self.database)
         self.services.set_core(self)
