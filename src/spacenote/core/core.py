@@ -41,6 +41,7 @@ class Services:
     """Service registry that automatically discovers and initializes services."""
 
     from spacenote.core.modules.access.service import AccessService  # noqa: PLC0415
+    from spacenote.core.modules.attachment.service import AttachmentService  # noqa: PLC0415
     from spacenote.core.modules.comment.service import CommentService  # noqa: PLC0415
     from spacenote.core.modules.counter.service import CounterService  # noqa: PLC0415
     from spacenote.core.modules.export.service import ExportService  # noqa: PLC0415
@@ -62,6 +63,7 @@ class Services:
     filter: FilterService
     note: NoteService
     comment: CommentService
+    attachment: AttachmentService
     export: ExportService
     telegram: TelegramService
     llm: LLMService
@@ -83,6 +85,7 @@ class Services:
             ("filter", "spacenote.core.modules.filter.service", "FilterService"),
             ("note", "spacenote.core.modules.note.service", "NoteService"),
             ("comment", "spacenote.core.modules.comment.service", "CommentService"),
+            ("attachment", "spacenote.core.modules.attachment.service", "AttachmentService"),
             ("export", "spacenote.core.modules.export.service", "ExportService"),
             ("telegram", "spacenote.core.modules.telegram.service", "TelegramService"),
             ("llm", "spacenote.core.modules.llm.service", "LLMService"),
