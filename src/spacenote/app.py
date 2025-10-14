@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from spacenote.config import Config
 from spacenote.core.core import Core
+from spacenote.core.modules.attachment.models import Attachment
 from spacenote.core.modules.comment.models import Comment
 from spacenote.core.modules.export.models import ExportData
 from spacenote.core.modules.field.models import SpaceField
@@ -326,6 +327,18 @@ class App:
         """Get paginated LLM logs (admin only)."""
         await self._core.services.access.ensure_admin(auth_token)
         return await self._core.services.llm.get_logs(limit, offset)
+
+    # === Attachments ===
+    async def upload_attachment(
+        self, auth_token: AuthToken, space_slug: str, filename: str, content: bytes, mime_type: str
+    ) -> Attachment:
+        """Upload file attachment to space (members only)."""
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        current_user = await self._core.services.access.ensure_authenticated(auth_token)
+        return await self._core.services.attachment.create_attachment(
+            space_id=space.id, note_id=None, user_id=current_user.id, filename=filename, content=content, mime_type=mime_type
+        )
 
     # === Private resolver methods ===
     def _resolve_space(self, slug: str) -> Space:

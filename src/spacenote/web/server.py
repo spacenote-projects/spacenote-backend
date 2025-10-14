@@ -11,6 +11,7 @@ from spacenote.errors import UserError
 from spacenote.web.error_handlers import general_exception_handler, user_error_handler
 from spacenote.web.openapi import set_custom_openapi
 from spacenote.web.routers import (
+    attachments_router,
     auth_router,
     comments_router,
     export_router,
@@ -69,6 +70,7 @@ def create_fastapi_app(app_instance: App, config: Config) -> FastAPI:
     app.include_router(filters_router, prefix="/api/v1")
     app.include_router(notes_router, prefix="/api/v1")
     app.include_router(comments_router, prefix="/api/v1")
+    app.include_router(attachments_router, prefix="/api/v1")
     app.include_router(export_router, prefix="/api/v1")
     app.include_router(telegram_router, prefix="/api/v1")
     app.include_router(llm_router, prefix="/api/v1")
