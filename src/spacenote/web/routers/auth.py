@@ -42,6 +42,7 @@ async def login(login_data: LoginRequest, app: AppDep, response: Response) -> Lo
         httponly=True,
         samesite="lax",
         secure=False,  # Set to True in production with HTTPS
+        max_age=30 * 24 * 60 * 60,  # 30 days to match session TTL
     )
 
     return LoginResponse(token=token)
