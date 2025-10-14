@@ -1,5 +1,6 @@
 """Service for managing image field previews."""
 
+import asyncio
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -10,7 +11,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 from spacenote.core.core import Service
 from spacenote.core.modules.field.models import FieldOption, FieldType, SpaceField
 from spacenote.core.modules.image.processor import generate_preview
-from spacenote.core.modules.image.utils import get_preview_path
+from spacenote.core.modules.image.utils import get_preview_path, is_valid_image
 from spacenote.errors import ValidationError
 
 logger = structlog.get_logger(__name__)
@@ -21,46 +22,84 @@ class ImageService(Service):
 
     def __init__(self, database: AsyncDatabase[dict[str, Any]]) -> None:
         super().__init__(database)
+        self._background_tasks: set[asyncio.Task[Any]] = set()
 
-    async def generate_previews_for_note(self, space_id: UUID, note_number: int, field_values: dict[str, Any]) -> None:
-        """Generate previews for all IMAGE fields in a note.
+    def process_note_images(self, note_id: UUID) -> None:
+        """Process IMAGE fields for a note: attach files and generate previews.
+
+        This method attaches IMAGE field attachments to the note and starts
+        background tasks to generate previews.
 
         Args:
-            space_id: The space ID
-            note_number: The note number within the space
-            field_values: Dictionary of field_id -> field_value (parsed values)
+            note_id: The note ID
         """
-        space = self.core.services.space.get_space(space_id)
+        task = asyncio.create_task(self._process_note_images_async(note_id))
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
 
+    async def _process_note_images_async(self, note_id: UUID) -> None:
+        """Internal async implementation of process_note_images."""
+        note = await self.core.services.note.get_note(note_id)
+        space = self.core.services.space.get_space(note.space_id)
+
+        preview_tasks = []
         for field in space.fields:
             if field.type != FieldType.IMAGE:
                 continue
 
-            field_value = field_values.get(field.id)
-            if field_value is None:
+            attachment_id = note.fields.get(field.id)
+            if attachment_id is None or not isinstance(attachment_id, UUID):
                 continue
 
-            if not isinstance(field_value, UUID):
-                logger.warning(
-                    "Expected UUID for IMAGE field value",
-                    field_id=field.id,
-                    field_value=field_value,
-                    type=type(field_value).__name__,
-                )
-                continue
+            await self.core.services.attachment.attach_to_note(attachment_id, note_id)
+            task = asyncio.create_task(self.generate_image_previews(note_id, field.id, attachment_id))
+            preview_tasks.append(task)
 
-            attachment_id = field_value
+    async def validate_image_attachment(self, attachment_id: UUID) -> None:
+        """Validate that an attachment is a valid image file.
 
-            try:
-                await self._generate_previews_for_field(space_id, note_number, field, attachment_id)
-            except Exception:
-                logger.exception(
-                    "Failed to generate previews for IMAGE field",
-                    space_id=space_id,
-                    note_number=note_number,
-                    field_id=field.id,
-                    attachment_id=attachment_id,
-                )
+        This should be called BEFORE creating or updating a note to ensure the attachment is valid.
+
+        Args:
+            attachment_id: The attachment ID to validate
+
+        Raises:
+            NotFoundError: If attachment not found
+            ValidationError: If attachment is not an image or file is invalid
+        """
+        attachment = await self.core.services.attachment.get_attachment(attachment_id)
+
+        if not attachment.mime_type.startswith("image/"):
+            raise ValidationError(f"Attachment {attachment_id} is not an image (mime_type: {attachment.mime_type})")
+
+        file_path = Path(self.core.config.attachments_path) / attachment.get_storage_path(note_number=None)
+
+        if not is_valid_image(file_path):
+            raise ValidationError(f"Attachment {attachment_id} is not a valid image file")
+
+    async def generate_image_previews(self, note_id: UUID, field_id: str, attachment_id: UUID) -> None:
+        """Generate preview images for an IMAGE field attachment.
+
+        Args:
+            note_id: The note ID
+            field_id: The field ID
+            attachment_id: The attachment ID
+
+        Raises:
+            NotFoundError: If note or attachment not found
+            ValidationError: If field not found, wrong type, or attachment invalid
+        """
+        note = await self.core.services.note.get_note(note_id)
+        space = self.core.services.space.get_space(note.space_id)
+        field = space.get_field(field_id)
+
+        if field is None:
+            raise ValidationError(f"Field '{field_id}' not found in space {note.space_id}")
+
+        if field.type != FieldType.IMAGE:
+            raise ValidationError(f"Field '{field_id}' is not IMAGE type (got {field.type})")
+
+        await self._generate_previews_for_field(note.space_id, note.number, field, attachment_id)
 
     async def _generate_previews_for_field(
         self, space_id: UUID, note_number: int, field: SpaceField, attachment_id: UUID
@@ -91,8 +130,7 @@ class ImageService(Service):
         # Generate previews
         previews_config = field.options.get(FieldOption.PREVIEWS, {})
         if not isinstance(previews_config, dict):
-            logger.warning("Invalid previews config", field_id=field.id, previews_config=previews_config)
-            return
+            raise ValidationError(f"Invalid previews config for field '{field.id}': must be a dictionary")
 
         previews_base_path = self.core.config.previews_path
 

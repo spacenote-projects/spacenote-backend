@@ -6,6 +6,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
 from spacenote.core.modules.counter.models import CounterType
+from spacenote.core.modules.field.models import FieldType
 from spacenote.core.modules.filter.adhoc import parse_adhoc_query
 from spacenote.core.modules.filter.models import SYSTEM_FIELD_DEFINITIONS
 from spacenote.core.modules.filter.query_builder import build_mongo_query
@@ -153,6 +154,14 @@ class NoteService(Service):
             raise NotFoundError(f"User {user_id} is not a member of space {space_id}")
 
         parsed_fields = self.core.services.field.parse_raw_fields(space_id, raw_fields, current_user_id=user_id)
+
+        # Validate IMAGE field attachments BEFORE creating note in DB
+        for field in space.fields:
+            if field.type == FieldType.IMAGE and field.id in parsed_fields:
+                attachment_id = parsed_fields[field.id]
+                if attachment_id is not None and isinstance(attachment_id, UUID):
+                    await self.core.services.image.validate_image_attachment(attachment_id)
+
         next_number = await self.core.services.counter.get_next_sequence(space_id, CounterType.NOTE)
         timestamp = now()
         res = await self._collection.insert_one(
@@ -167,8 +176,8 @@ class NoteService(Service):
         )
         note = await self.get_note(res.inserted_id)
 
-        # Generate image previews for IMAGE fields
-        await self.core.services.image.generate_previews_for_note(space_id, next_number, parsed_fields)
+        # Process IMAGE field attachments (attach files and generate previews in background)
+        self.core.services.image.process_note_images(note.id)
 
         # Send Telegram notification in the background
         self.core.services.telegram.send_notification(
@@ -195,6 +204,14 @@ class NoteService(Service):
         note = await self.get_note(note_id)
         parsed_fields = self.core.services.field.parse_raw_fields(note.space_id, raw_fields, current_user_id, partial=True)
 
+        # Validate IMAGE field attachments BEFORE updating note in DB
+        space = self.core.services.space.get_space(note.space_id)
+        for field in space.fields:
+            if field.type == FieldType.IMAGE and field.id in parsed_fields:
+                attachment_id = parsed_fields[field.id]
+                if attachment_id is not None and isinstance(attachment_id, UUID):
+                    await self.core.services.image.validate_image_attachment(attachment_id)
+
         # Build update document with only the specific fields to update
         timestamp = now()
         update_doc: dict[str, Any] = {"edited_at": timestamp, "activity_at": timestamp}
@@ -205,8 +222,8 @@ class NoteService(Service):
 
         updated_note = await self.get_note(note_id)
 
-        # Generate image previews for IMAGE fields (only for updated fields)
-        await self.core.services.image.generate_previews_for_note(note.space_id, note.number, parsed_fields)
+        # Process IMAGE field attachments (attach files and generate previews in background)
+        self.core.services.image.process_note_images(note.id)
 
         # Send Telegram notification in the background if we have user context
         if current_user_id:

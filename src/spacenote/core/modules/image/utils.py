@@ -1,5 +1,6 @@
 """Utility functions for image field handling."""
 
+from pathlib import Path
 from uuid import UUID
 
 from PIL import Image
@@ -29,17 +30,17 @@ def get_preview_path(
     return f"{previews_base_path}/{space_id}/{note_number}/{field_id}/{attachment_id}/{preview_key}.webp"
 
 
-def is_valid_image(file_path: str) -> bool:
+def is_valid_image(source: Path) -> bool:
     """Check if a file is a valid image that can be opened by PIL.
 
     Args:
-        file_path: Path to the file to check
+        source: Path to the file to check
 
     Returns:
         True if the file is a valid image, False otherwise
     """
     try:
-        with Image.open(file_path) as img:
+        with Image.open(source) as img:
             img.verify()
     except Exception:
         return False

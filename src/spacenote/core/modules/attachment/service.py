@@ -8,7 +8,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 from spacenote.core.core import Service
 from spacenote.core.modules.attachment.models import Attachment
 from spacenote.core.modules.counter.models import CounterType
-from spacenote.errors import NotFoundError
+from spacenote.errors import NotFoundError, ValidationError
 
 logger = structlog.get_logger(__name__)
 
@@ -78,3 +78,34 @@ class AttachmentService(Service):
         await self._collection.insert_one(attachment.model_dump(by_alias=True))
         logger.info("Created attachment", attachment_id=attachment.id, space_id=space_id, filename=filename)
         return attachment
+
+    async def attach_to_note(self, attachment_id: UUID, note_id: UUID) -> None:
+        """Attach a space-level attachment to a note by moving file and updating database.
+
+        Args:
+            attachment_id: The ID of the attachment to attach
+            note_id: The note ID to attach to
+
+        Raises:
+            NotFoundError: If attachment or note not found
+            ValidationError: If attachment already attached to another note or file not found
+        """
+        attachment = await self.get_attachment(attachment_id)
+
+        if attachment.note_id is not None:
+            raise ValidationError(f"Attachment {attachment_id} is already attached to note {attachment.note_id}")
+
+        note = await self.core.services.note.get_note(note_id)
+
+        old_path = Path(self.core.config.attachments_path) / attachment.get_storage_path(note_number=None)
+        new_path = Path(self.core.config.attachments_path) / attachment.get_storage_path(note_number=note.number)
+
+        if not old_path.exists():
+            raise ValidationError(f"Attachment file not found: {old_path}")
+
+        new_path.parent.mkdir(parents=True, exist_ok=True)
+        old_path.rename(new_path)
+        logger.debug("Moved attachment file", attachment_id=attachment_id, old_path=str(old_path), new_path=str(new_path))
+
+        await self._collection.update_one({"_id": attachment_id}, {"$set": {"note_id": note_id}})
+        logger.debug("Attached attachment to note", attachment_id=attachment_id, note_id=note_id, note_number=note.number)
