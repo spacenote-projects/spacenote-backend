@@ -167,6 +167,9 @@ class NoteService(Service):
         )
         note = await self.get_note(res.inserted_id)
 
+        # Generate image previews for IMAGE fields
+        await self.core.services.image.generate_previews_for_note(space_id, next_number, parsed_fields)
+
         # Send Telegram notification in the background
         self.core.services.telegram.send_notification(
             event_type=TelegramEventType.NOTE_CREATED, note=note, user_id=user_id, space_id=space_id
@@ -201,6 +204,9 @@ class NoteService(Service):
         await self._collection.update_one({"_id": note_id}, {"$set": update_doc})
 
         updated_note = await self.get_note(note_id)
+
+        # Generate image previews for IMAGE fields (only for updated fields)
+        await self.core.services.image.generate_previews_for_note(note.space_id, note.number, parsed_fields)
 
         # Send Telegram notification in the background if we have user context
         if current_user_id:

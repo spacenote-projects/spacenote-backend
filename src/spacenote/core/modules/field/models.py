@@ -25,6 +25,7 @@ class FieldType(StrEnum):
     DATETIME = "datetime"
     INT = "int"
     FLOAT = "float"
+    IMAGE = "image"  # Reference to image attachment with previews
 
 
 class FieldOption(StrEnum):
@@ -34,6 +35,7 @@ class FieldOption(StrEnum):
     MIN = "min"  # int/float for numeric types
     MAX = "max"  # int/float for numeric types
     VALUE_MAPS = "value_maps"  # dict[str, dict[str, str]] for STRING_CHOICE metadata
+    PREVIEWS = "previews"  # dict[str, dict] for IMAGE preview configurations
 
 
 class SpecialValue(StrEnum):

@@ -440,6 +440,56 @@ class DateTimeValidator(FieldValidator):
         return field
 
 
+class ImageValidator(FieldValidator):
+    """Validator for image attachment fields."""
+
+    def parse_value(self, field: SpaceField, raw_value: str | None) -> FieldValueType:
+        if raw_value is None:
+            if field.default is not None:
+                return field.default
+            if field.required:
+                raise ValidationError(f"Required field '{field.id}' has no value")
+            return None
+
+        if raw_value == "" and not field.required:
+            return None
+
+        try:
+            attachment_id = UUID(raw_value)
+        except ValueError as e:
+            raise ValidationError(f"Invalid UUID for field '{field.id}': {raw_value}") from e
+
+        return attachment_id
+
+    def _validate_type_specific_field_definition(self, field: SpaceField) -> SpaceField:
+        if FieldOption.PREVIEWS not in field.options:
+            raise ValidationError("Image fields must have 'previews' option")
+
+        previews = field.options[FieldOption.PREVIEWS]
+
+        if not isinstance(previews, dict):
+            raise ValidationError("Image field 'previews' option must be a dictionary")
+
+        if not previews:
+            raise ValidationError("Image field 'previews' option cannot be empty")
+
+        for preview_key, preview_config in previews.items():
+            if not isinstance(preview_key, str):
+                raise ValidationError(f"Preview key must be a string, got {type(preview_key).__name__}")
+
+            if not isinstance(preview_config, dict):
+                raise ValidationError(f"Preview config for '{preview_key}' must be a dictionary")
+
+            if "max_width" not in preview_config:
+                raise ValidationError(f"Preview config for '{preview_key}' must have 'max_width'")
+
+            max_width = preview_config["max_width"]
+            if not isinstance(max_width, int) or max_width <= 0:
+                raise ValidationError(f"Preview 'max_width' for '{preview_key}' must be a positive integer")
+
+        return field
+
+
 # Map field types to validator classes
 _VALIDATOR_CLASSES: dict[FieldType, type[FieldValidator]] = {
     FieldType.STRING: StringValidator,
@@ -451,6 +501,7 @@ _VALIDATOR_CLASSES: dict[FieldType, type[FieldValidator]] = {
     FieldType.STRING_CHOICE: StringChoiceValidator,
     FieldType.TAGS: TagsValidator,
     FieldType.DATETIME: DateTimeValidator,
+    FieldType.IMAGE: ImageValidator,
 }
 
 

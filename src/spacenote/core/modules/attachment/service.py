@@ -1,9 +1,12 @@
 from typing import Any
+from uuid import UUID
 
 import structlog
 from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
+from spacenote.core.modules.attachment.models import Attachment
+from spacenote.errors import NotFoundError
 
 logger = structlog.get_logger(__name__)
 
@@ -21,3 +24,20 @@ class AttachmentService(Service):
         await self._collection.create_index([("note_id", 1)])
         await self._collection.create_index([("user_id", 1)])
         await self._collection.create_index([("created_at", -1)])
+
+    async def get_attachment(self, attachment_id: UUID) -> Attachment:
+        """Get attachment by ID.
+
+        Args:
+            attachment_id: The ID of the attachment
+
+        Returns:
+            The attachment
+
+        Raises:
+            NotFoundError: If attachment not found
+        """
+        doc = await self._collection.find_one({"_id": attachment_id})
+        if not doc:
+            raise NotFoundError(f"Attachment not found: {attachment_id}")
+        return Attachment.model_validate(doc)
