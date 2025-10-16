@@ -332,14 +332,26 @@ class App:
 
     # === Attachments ===
     async def upload_attachment(
-        self, auth_token: AuthToken, space_slug: str, filename: str, content: bytes, mime_type: str
+        self,
+        auth_token: AuthToken,
+        space_slug: str,
+        filename: str,
+        content: bytes,
+        mime_type: str,
+        note_number: int | None = None,
     ) -> Attachment:
-        """Upload file attachment to space (members only)."""
+        """Upload file attachment to space, optionally attached to a note (members only)."""
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         current_user = await self._core.services.access.ensure_authenticated(auth_token)
+
+        note_id = None
+        if note_number is not None:
+            note = await self._core.services.note.get_note_by_number(space.id, note_number)
+            note_id = note.id
+
         return await self._core.services.attachment.create_attachment(
-            space_id=space.id, note_id=None, user_id=current_user.id, filename=filename, content=content, mime_type=mime_type
+            space_id=space.id, note_id=note_id, user_id=current_user.id, filename=filename, content=content, mime_type=mime_type
         )
 
     async def get_attachment_file_info(self, auth_token: AuthToken, space_slug: str, attachment_id: UUID) -> AttachmentFileInfo:

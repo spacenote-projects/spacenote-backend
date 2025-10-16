@@ -13,7 +13,10 @@ router = APIRouter(tags=["attachments"])
 @router.post(
     "/spaces/{space_slug}/attachments",
     summary="Upload attachment",
-    description="Upload a file attachment to a space. Returns attachment metadata with ID that can be used in IMAGE fields.",
+    description=(
+        "Upload a file attachment to a space. Optionally attach directly to a note. "
+        "Returns attachment metadata with ID that can be used in IMAGE fields."
+    ),
     operation_id="uploadAttachment",
     status_code=201,
     responses={
@@ -21,14 +24,16 @@ router = APIRouter(tags=["attachments"])
         400: {"model": ErrorResponse, "description": "Invalid file or validation failed"},
         401: {"model": ErrorResponse, "description": "Not authenticated"},
         403: {"model": ErrorResponse, "description": "Not a member of this space"},
-        404: {"model": ErrorResponse, "description": "Space not found"},
+        404: {"model": ErrorResponse, "description": "Space or note not found"},
     },
 )
-async def upload_attachment(space_slug: str, file: UploadFile, app: AppDep, auth_token: AuthTokenDep) -> Attachment:
+async def upload_attachment(
+    space_slug: str, file: UploadFile, app: AppDep, auth_token: AuthTokenDep, note_number: int | None = None
+) -> Attachment:
     content = await file.read()
     filename = file.filename or "unnamed"
     mime_type = file.content_type or "application/octet-stream"
-    return await app.upload_attachment(auth_token, space_slug, filename, content, mime_type)
+    return await app.upload_attachment(auth_token, space_slug, filename, content, mime_type, note_number)
 
 
 @router.get(

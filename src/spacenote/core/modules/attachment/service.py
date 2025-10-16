@@ -66,6 +66,12 @@ class AttachmentService(Service):
         """
         space = self.core.services.space.get_space(space_id)
         number = await self.core.services.counter.get_next_sequence(space_id, CounterType.ATTACHMENT)
+
+        note_number = None
+        if note_id is not None:
+            note = await self.core.services.note.get_note(note_id)
+            note_number = note.number
+
         attachment = Attachment(
             space_id=space_id,
             note_id=note_id,
@@ -80,7 +86,7 @@ class AttachmentService(Service):
             attachments_path=self.core.config.attachments_path,
             space_slug=space.slug,
             attachment_number=attachment.number,
-            note_number=None,
+            note_number=note_number,
             content=content,
         )
 
