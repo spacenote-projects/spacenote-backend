@@ -45,11 +45,7 @@ async def upload_attachment(space_slug: str, file: UploadFile, app: AppDep, auth
 )
 async def download_attachment(space_slug: str, attachment_id: UUID, app: AppDep, auth_token: AuthTokenDep) -> FileResponse:
     file_info = await app.get_attachment_file_info(auth_token, space_slug, attachment_id)
-    return FileResponse(
-        path=file_info.file_path,
-        media_type=file_info.mime_type,
-        filename=file_info.filename,
-    )
+    return FileResponse(path=file_info.file_path, media_type=file_info.mime_type, filename=file_info.filename)
 
 
 @router.get(
@@ -68,7 +64,4 @@ async def download_preview(
     space_slug: str, note_number: int, field_id: str, preview_key: str, app: AppDep, auth_token: AuthTokenDep
 ) -> FileResponse:
     file_path = await app.get_image_preview_path(auth_token, space_slug, note_number, field_id, preview_key)
-    return FileResponse(
-        path=file_path,
-        media_type="image/webp",
-    )
+    return FileResponse(path=file_path, media_type="image/webp")

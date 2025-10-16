@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from uuid import UUID
 
 from spacenote.config import Config
@@ -358,7 +359,7 @@ class App:
 
     async def get_image_preview_path(
         self, auth_token: AuthToken, space_slug: str, note_number: int, field_id: str, preview_key: str
-    ) -> str:
+    ) -> Path:
         """Get preview image file path for IMAGE field (members only).
 
         Returns:

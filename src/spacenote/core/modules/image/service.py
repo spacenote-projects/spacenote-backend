@@ -11,8 +11,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 from spacenote.core.core import Service
 from spacenote.core.modules.attachment.storage import get_attachment_file_path
 from spacenote.core.modules.field.models import FieldOption, FieldType, SpaceField
-from spacenote.core.modules.image.processor import generate_preview
-from spacenote.core.modules.image.utils import get_preview_path, is_valid_image
+from spacenote.core.modules.image.preview import generate_preview, get_preview_path, is_valid_image
 from spacenote.errors import NotFoundError, ValidationError
 
 logger = structlog.get_logger(__name__)
@@ -106,15 +105,12 @@ class ImageService(Service):
         if field.type != FieldType.IMAGE:
             raise ValidationError(f"Field '{field_id}' is not IMAGE type (got {field.type})")
 
-        await self._generate_previews_for_field(note.space_id, note.number, field, attachment_id)
+        await self._generate_previews_for_field(note.number, field, attachment_id)
 
-    async def _generate_previews_for_field(
-        self, space_id: UUID, note_number: int, field: SpaceField, attachment_id: UUID
-    ) -> None:
+    async def _generate_previews_for_field(self, note_number: int, field: SpaceField, attachment_id: UUID) -> None:
         """Generate previews for a single IMAGE field.
 
         Args:
-            space_id: The space ID
             note_number: The note number
             field: The field definition
             attachment_id: The attachment ID
@@ -154,20 +150,20 @@ class ImageService(Service):
             if not isinstance(max_width, int) or max_width <= 0:
                 continue
 
-            preview_path = get_preview_path(previews_base_path, space_id, note_number, field.id, attachment_id, preview_key)
+            preview_path = get_preview_path(previews_base_path, space.slug, note_number, attachment.number, field.id, preview_key)
 
             # Skip if preview already exists
-            if Path(preview_path).exists():
+            if preview_path.exists():
                 logger.debug(
                     "Preview already exists, skipping",
-                    preview_path=preview_path,
+                    preview_path=str(preview_path),
                     field_id=field.id,
                     preview_key=preview_key,
                 )
                 continue
 
             try:
-                width, height = generate_preview(str(attachment_path), preview_path, max_width)
+                width, height = generate_preview(attachment_path, preview_path, max_width)
                 logger.info(
                     "Generated preview",
                     field_id=field.id,
@@ -182,10 +178,10 @@ class ImageService(Service):
                     field_id=field.id,
                     preview_key=preview_key,
                     attachment_path=str(attachment_path),
-                    preview_path=preview_path,
+                    preview_path=str(preview_path),
                 )
 
-    async def get_image_preview_path(self, space_id: UUID, note_number: int, field_id: str, preview_key: str) -> str:
+    async def get_image_preview_path(self, space_id: UUID, note_number: int, field_id: str, preview_key: str) -> Path:
         """Get file path for preview image download.
 
         Args:
@@ -215,11 +211,13 @@ class ImageService(Service):
         if attachment_id is None or not isinstance(attachment_id, UUID):
             raise NotFoundError(f"Note {note_number} has no attachment for field '{field_id}'")
 
+        attachment = await self.core.services.attachment.get_attachment(attachment_id)
+
         preview_path = get_preview_path(
-            self.core.config.previews_path, space_id, note.number, field_id, attachment_id, preview_key
+            self.core.config.previews_path, space.slug, note.number, attachment.number, field_id, preview_key
         )
 
-        if not Path(preview_path).exists():
+        if not preview_path.exists():
             raise NotFoundError(f"Preview not found: {preview_key}")
 
         return preview_path
