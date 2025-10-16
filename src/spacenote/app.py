@@ -1,7 +1,6 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from uuid import UUID
 
 from spacenote.config import Config
 from spacenote.core.core import Core
@@ -17,7 +16,7 @@ from spacenote.core.modules.space.models import Space
 from spacenote.core.modules.telegram.models import TelegramEventType, TelegramIntegration, TelegramNotificationConfig
 from spacenote.core.modules.user.models import User, UserView
 from spacenote.core.pagination import PaginationResult
-from spacenote.errors import AuthenticationError, NotFoundError, ValidationError
+from spacenote.errors import AuthenticationError, ValidationError
 
 
 class App:
@@ -354,20 +353,23 @@ class App:
             space_id=space.id, note_id=note_id, user_id=current_user.id, filename=filename, content=content, mime_type=mime_type
         )
 
-    async def get_attachment_file_info(self, auth_token: AuthToken, space_slug: str, attachment_id: UUID) -> AttachmentFileInfo:
-        """Get attachment file path and metadata (members only).
+    async def get_attachment_file_info(
+        self, auth_token: AuthToken, space_slug: str, attachment_number: int
+    ) -> AttachmentFileInfo:
+        """Get attachment file path and metadata by number (members only).
 
         Returns:
             AttachmentFileInfo with file_path, filename, and mime_type
         """
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.attachment.get_attachment_file_info(space.id, attachment_number)
 
-        attachment = await self._core.services.attachment.get_attachment(attachment_id)
-        if attachment.space_id != space.id:
-            raise NotFoundError(f"Attachment {attachment_id} not found in space {space_slug}")
-
-        return await self._core.services.attachment.get_attachment_file_info(attachment_id)
+    async def get_note_attachments(self, auth_token: AuthToken, space_slug: str, note_number: int) -> list[Attachment]:
+        """Get all attachments for a note (members only)."""
+        space, note = await self._resolve_note(space_slug, note_number)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.attachment.list_note_attachments(note.id)
 
     async def get_image_preview_path(
         self, auth_token: AuthToken, space_slug: str, note_number: int, field_id: str, preview_key: str

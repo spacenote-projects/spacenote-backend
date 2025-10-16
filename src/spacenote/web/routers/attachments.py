@@ -1,5 +1,3 @@
-from uuid import UUID
-
 from fastapi import APIRouter, UploadFile
 from fastapi.responses import FileResponse
 
@@ -37,9 +35,25 @@ async def upload_attachment(
 
 
 @router.get(
-    "/spaces/{space_slug}/attachments/{attachment_id}",
+    "/spaces/{space_slug}/notes/{note_number}/attachments",
+    summary="List note attachments",
+    description="Get all attachments for a specific note.",
+    operation_id="listNoteAttachments",
+    responses={
+        200: {"description": "List of attachments"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Not a member of this space"},
+        404: {"model": ErrorResponse, "description": "Space or note not found"},
+    },
+)
+async def list_note_attachments(space_slug: str, note_number: int, app: AppDep, auth_token: AuthTokenDep) -> list[Attachment]:
+    return await app.get_note_attachments(auth_token, space_slug, note_number)
+
+
+@router.get(
+    "/spaces/{space_slug}/attachments/{attachment_number}",
     summary="Download attachment",
-    description="Download the original attachment file.",
+    description="Download the original attachment file by number.",
     operation_id="downloadAttachment",
     responses={
         200: {"description": "Attachment file"},
@@ -48,8 +62,8 @@ async def upload_attachment(
         404: {"model": ErrorResponse, "description": "Space or attachment not found"},
     },
 )
-async def download_attachment(space_slug: str, attachment_id: UUID, app: AppDep, auth_token: AuthTokenDep) -> FileResponse:
-    file_info = await app.get_attachment_file_info(auth_token, space_slug, attachment_id)
+async def download_attachment(space_slug: str, attachment_number: int, app: AppDep, auth_token: AuthTokenDep) -> FileResponse:
+    file_info = await app.get_attachment_file_info(auth_token, space_slug, attachment_number)
     return FileResponse(path=file_info.file_path, media_type=file_info.mime_type, filename=file_info.filename)
 
 

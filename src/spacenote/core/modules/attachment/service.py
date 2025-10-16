@@ -48,6 +48,24 @@ class AttachmentService(Service):
             raise NotFoundError(f"Attachment not found: {attachment_id}")
         return Attachment.model_validate(doc)
 
+    async def get_attachment_by_number(self, space_id: UUID, number: int) -> Attachment:
+        """Get attachment by space and sequential number.
+
+        Args:
+            space_id: Space ID
+            number: Sequential attachment number
+
+        Returns:
+            The attachment
+
+        Raises:
+            NotFoundError: If attachment not found
+        """
+        doc = await self._collection.find_one({"space_id": space_id, "number": number})
+        if not doc:
+            raise NotFoundError(f"Attachment not found: space_id={space_id}, number={number}")
+        return Attachment.model_validate(doc)
+
     async def create_attachment(
         self, space_id: UUID, note_id: UUID | None, user_id: UUID, filename: str, content: bytes, mime_type: str
     ) -> Attachment:
@@ -128,11 +146,24 @@ class AttachmentService(Service):
         await self._collection.update_one({"_id": attachment_id}, {"$set": {"note_id": note_id}})
         logger.debug("Attached attachment to note", attachment_id=attachment_id, note_id=note_id, note_number=note.number)
 
-    async def get_attachment_file_info(self, attachment_id: UUID) -> AttachmentFileInfo:
+    async def list_note_attachments(self, note_id: UUID) -> list[Attachment]:
+        """List all attachments for a note.
+
+        Args:
+            note_id: Note ID to get attachments for
+
+        Returns:
+            List of attachments ordered by created_at descending (newest first)
+        """
+        cursor = self._collection.find({"note_id": note_id}).sort("created_at", -1)
+        return await Attachment.list_cursor(cursor)
+
+    async def get_attachment_file_info(self, space_id: UUID, attachment_number: int) -> AttachmentFileInfo:
         """Get file info for attachment download.
 
         Args:
-            attachment_id: Attachment ID
+            space_id: Space ID
+            attachment_number: Sequential attachment number
 
         Returns:
             AttachmentFileInfo with file_path, filename, and mime_type
@@ -140,8 +171,8 @@ class AttachmentService(Service):
         Raises:
             NotFoundError: If attachment or file not found
         """
-        attachment = await self.get_attachment(attachment_id)
-        space = self.core.services.space.get_space(attachment.space_id)
+        attachment = await self.get_attachment_by_number(space_id, attachment_number)
+        space = self.core.services.space.get_space(space_id)
 
         note_number = None
         if attachment.note_id is not None:
@@ -156,6 +187,6 @@ class AttachmentService(Service):
         )
 
         if not file_path.exists():
-            raise NotFoundError(f"Attachment file not found: {attachment_id}")
+            raise NotFoundError(f"Attachment file not found: space_id={space_id}, number={attachment_number}")
 
         return AttachmentFileInfo(file_path=file_path, filename=attachment.filename, mime_type=attachment.mime_type)
