@@ -5,10 +5,10 @@ description = "Flexible note-taking system with customizable spaces"
 requires-python = ">=3.13"
 dependencies = [
     "bcrypt~=5.0.0",
-    "fastapi[standard]~=0.118.3",
+    "fastapi[standard]~=0.119.0",
     "itsdangerous~=2.2.0",
-    "litellm~=1.77.7",
-    "pillow>=11.3.0",
+    "litellm~=1.78.2",
+    "pillow~=12.0.0",
     "pydantic-settings~=2.11.0",
     "pymongo~=4.15.3",
     "python-dotenv~=1.1.1",
@@ -33,7 +33,7 @@ dev = [
     "pip-audit~=2.9.0",
     "bandit~=1.8.6",
     "mypy~=1.18.2",
-    "watchfiles~=1.1.0",
+    "watchfiles~=1.1.1",
 ]
 
 [tool.mypy]

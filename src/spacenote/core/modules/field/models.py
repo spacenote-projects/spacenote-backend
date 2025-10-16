@@ -6,8 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-# Type for field option values (VALUES, MIN, MAX, VALUE_MAPS)
-FieldOptionValueType = list[str] | int | float | dict[str, dict[str, str]]
+# Type for field option values (VALUES, MIN, MAX, VALUE_MAPS, PREVIEWS)
+FieldOptionValueType = list[str] | int | float | dict[str, dict[str, str]] | dict[str, dict[str, int]]
 
 # Type for actual field values in notes
 FieldValueType = str | bool | list[str] | int | float | datetime | UUID | None

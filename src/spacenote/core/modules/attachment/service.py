@@ -6,7 +6,7 @@ import structlog
 from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
-from spacenote.core.modules.attachment.models import Attachment
+from spacenote.core.modules.attachment.models import Attachment, AttachmentFileInfo
 from spacenote.core.modules.counter.models import CounterType
 from spacenote.errors import NotFoundError, ValidationError
 
@@ -109,3 +109,28 @@ class AttachmentService(Service):
 
         await self._collection.update_one({"_id": attachment_id}, {"$set": {"note_id": note_id}})
         logger.debug("Attached attachment to note", attachment_id=attachment_id, note_id=note_id, note_number=note.number)
+
+    async def get_attachment_file_path(self, attachment_id: UUID) -> AttachmentFileInfo:
+        """Get file path for attachment download.
+
+        Args:
+            attachment_id: Attachment ID
+
+        Returns:
+            AttachmentFileInfo with file_path, filename, and mime_type
+
+        Raises:
+            NotFoundError: If attachment or file not found
+        """
+        attachment = await self.get_attachment(attachment_id)
+
+        if attachment.note_id is not None:
+            note = await self.core.services.note.get_note(attachment.note_id)
+            file_path = Path(self.core.config.attachments_path) / attachment.get_storage_path(note.number)
+        else:
+            file_path = Path(self.core.config.attachments_path) / attachment.get_storage_path(note_number=None)
+
+        if not file_path.exists():
+            raise NotFoundError(f"Attachment file not found: {attachment_id}")
+
+        return AttachmentFileInfo(file_path=str(file_path), filename=attachment.filename, mime_type=attachment.mime_type)

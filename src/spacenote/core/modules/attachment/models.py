@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from spacenote.core.db import MongoModel
 from spacenote.core.modules.attachment.utils import sanitize_filename
@@ -39,3 +39,11 @@ class Attachment(MongoModel):
         if note_number is not None:
             return f"{self.space_id}/{note_number}/{file_part}"
         return f"{self.space_id}/{SPACE_ATTACHMENTS_DIR}/{file_part}"
+
+
+class AttachmentFileInfo(BaseModel):
+    """Information about an attachment file for download."""
+
+    file_path: str = Field(..., description="Absolute path to file on disk")
+    filename: str = Field(..., description="Original filename")
+    mime_type: str = Field(..., description="MIME type")

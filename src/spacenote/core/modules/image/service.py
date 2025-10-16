@@ -12,7 +12,7 @@ from spacenote.core.core import Service
 from spacenote.core.modules.field.models import FieldOption, FieldType, SpaceField
 from spacenote.core.modules.image.processor import generate_preview
 from spacenote.core.modules.image.utils import get_preview_path, is_valid_image
-from spacenote.errors import ValidationError
+from spacenote.errors import NotFoundError, ValidationError
 
 logger = structlog.get_logger(__name__)
 
@@ -172,3 +172,42 @@ class ImageService(Service):
                     attachment_path=attachment_path,
                     preview_path=preview_path,
                 )
+
+    async def get_image_preview_path(self, space_id: UUID, note_number: int, field_id: str, preview_key: str) -> str:
+        """Get file path for preview image download.
+
+        Args:
+            space_id: Space ID
+            note_number: Note number
+            field_id: Field ID
+            preview_key: Preview size key (e.g., "thumbnail", "medium")
+
+        Returns:
+            File path to preview image
+
+        Raises:
+            NotFoundError: If note, field, or preview not found
+            ValidationError: If field is not IMAGE type or has no attachment
+        """
+        note = await self.core.services.note.get_note_by_number(space_id, note_number)
+        space = self.core.services.space.get_space(space_id)
+
+        field = space.get_field(field_id)
+        if field is None:
+            raise NotFoundError(f"Field '{field_id}' not found")
+
+        if field.type != FieldType.IMAGE:
+            raise ValidationError(f"Field '{field_id}' is not an IMAGE field")
+
+        attachment_id = note.fields.get(field_id)
+        if attachment_id is None or not isinstance(attachment_id, UUID):
+            raise NotFoundError(f"Note {note_number} has no attachment for field '{field_id}'")
+
+        preview_path = get_preview_path(
+            self.core.config.previews_path, space_id, note.number, field_id, attachment_id, preview_key
+        )
+
+        if not Path(preview_path).exists():
+            raise NotFoundError(f"Preview not found: {preview_key}")
+
+        return preview_path

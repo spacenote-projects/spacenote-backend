@@ -451,7 +451,9 @@ class ImageValidator(FieldValidator):
                 raise ValidationError(f"Required field '{field.id}' has no value")
             return None
 
-        if raw_value == "" and not field.required:
+        if raw_value == "":
+            if field.required:
+                raise ValidationError(f"Required field '{field.id}' has no value")
             return None
 
         try:

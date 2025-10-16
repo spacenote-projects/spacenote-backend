@@ -19,9 +19,17 @@ Basic content unit within a space. Notes:
 
 ### Fields
 Dynamic schema system where each space defines its own fields:
-- **Types**: text, number, date, select, multi-select, relation
-- **Properties**: required/optional, default values, validation rules
+- **Types**: text, markdown, number, date, boolean, select, tags, user, image
+- **Properties**: required/optional, default values, validation rules, type-specific options
 - Fields are space-specific, enabling flexible data modeling
+
+#### Image Fields
+Special field type for managing image attachments with automatic preview generation:
+- Upload images as attachments to spaces
+- Reference attachments in IMAGE field by UUID
+- Automatic preview generation in WebP format
+- Configure multiple preview sizes (thumbnail, medium, large, etc.)
+- Previews maintain aspect ratio and use efficient compression
 
 ### Users & Permissions
 - Small team focus (1-10 users)

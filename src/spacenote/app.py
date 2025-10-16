@@ -1,9 +1,10 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from uuid import UUID
 
 from spacenote.config import Config
 from spacenote.core.core import Core
-from spacenote.core.modules.attachment.models import Attachment
+from spacenote.core.modules.attachment.models import Attachment, AttachmentFileInfo
 from spacenote.core.modules.comment.models import Comment
 from spacenote.core.modules.export.models import ExportData
 from spacenote.core.modules.field.models import SpaceField
@@ -15,7 +16,7 @@ from spacenote.core.modules.space.models import Space
 from spacenote.core.modules.telegram.models import TelegramEventType, TelegramIntegration, TelegramNotificationConfig
 from spacenote.core.modules.user.models import User, UserView
 from spacenote.core.pagination import PaginationResult
-from spacenote.errors import AuthenticationError, ValidationError
+from spacenote.errors import AuthenticationError, NotFoundError, ValidationError
 
 
 class App:
@@ -339,6 +340,33 @@ class App:
         return await self._core.services.attachment.create_attachment(
             space_id=space.id, note_id=None, user_id=current_user.id, filename=filename, content=content, mime_type=mime_type
         )
+
+    async def get_attachment_path(self, auth_token: AuthToken, space_slug: str, attachment_id: UUID) -> AttachmentFileInfo:
+        """Get attachment file path and metadata (members only).
+
+        Returns:
+            AttachmentFileInfo with file_path, filename, and mime_type
+        """
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+
+        attachment = await self._core.services.attachment.get_attachment(attachment_id)
+        if attachment.space_id != space.id:
+            raise NotFoundError(f"Attachment {attachment_id} not found in space {space_slug}")
+
+        return await self._core.services.attachment.get_attachment_file_path(attachment_id)
+
+    async def get_image_preview_path(
+        self, auth_token: AuthToken, space_slug: str, note_number: int, field_id: str, preview_key: str
+    ) -> str:
+        """Get preview image file path for IMAGE field (members only).
+
+        Returns:
+            File path to preview image
+        """
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.image.get_image_preview_path(space.id, note_number, field_id, preview_key)
 
     # === Private resolver methods ===
     def _resolve_space(self, slug: str) -> Space:
