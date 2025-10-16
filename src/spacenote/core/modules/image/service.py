@@ -9,6 +9,7 @@ import structlog
 from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
+from spacenote.core.modules.attachment.utils import get_attachment_storage_path
 from spacenote.core.modules.field.models import FieldOption, FieldType, SpaceField
 from spacenote.core.modules.image.processor import generate_preview
 from spacenote.core.modules.image.utils import get_preview_path, is_valid_image
@@ -68,11 +69,17 @@ class ImageService(Service):
             ValidationError: If attachment is not an image or file is invalid
         """
         attachment = await self.core.services.attachment.get_attachment(attachment_id)
+        space = self.core.services.space.get_space(attachment.space_id)
 
         if not attachment.mime_type.startswith("image/"):
             raise ValidationError(f"Attachment {attachment_id} is not an image (mime_type: {attachment.mime_type})")
 
-        file_path = Path(self.core.config.attachments_path) / attachment.get_storage_path(note_number=None)
+        file_path = Path(self.core.config.attachments_path) / get_attachment_storage_path(
+            space_slug=space.slug,
+            attachment_number=attachment.number,
+            filename=attachment.filename,
+            note_number=None,
+        )
 
         if not is_valid_image(file_path):
             raise ValidationError(f"Attachment {attachment_id} is not a valid image file")
@@ -116,15 +123,20 @@ class ImageService(Service):
             ValidationError: If attachment not found or is not an image
         """
         attachment = await self.core.services.attachment.get_attachment(attachment_id)
+        space = self.core.services.space.get_space(attachment.space_id)
 
         if not attachment.mime_type.startswith("image/"):
             raise ValidationError(f"Attachment {attachment_id} is not an image (mime_type: {attachment.mime_type})")
 
         # Get attachment file path
-        attachments_path = self.core.config.attachments_path
-        attachment_path = f"{attachments_path}/{attachment.get_storage_path(note_number)}"
+        attachment_path = Path(self.core.config.attachments_path) / get_attachment_storage_path(
+            space_slug=space.slug,
+            attachment_number=attachment.number,
+            filename=attachment.filename,
+            note_number=note_number,
+        )
 
-        if not Path(attachment_path).exists():
+        if not attachment_path.exists():
             raise ValidationError(f"Attachment file not found: {attachment_path}")
 
         # Generate previews
@@ -155,7 +167,7 @@ class ImageService(Service):
                 continue
 
             try:
-                width, height = generate_preview(attachment_path, preview_path, max_width)
+                width, height = generate_preview(str(attachment_path), preview_path, max_width)
                 logger.info(
                     "Generated preview",
                     field_id=field.id,
@@ -169,7 +181,7 @@ class ImageService(Service):
                     "Failed to generate preview",
                     field_id=field.id,
                     preview_key=preview_key,
-                    attachment_path=attachment_path,
+                    attachment_path=str(attachment_path),
                     preview_path=preview_path,
                 )
 

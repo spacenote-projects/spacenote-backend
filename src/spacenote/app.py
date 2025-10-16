@@ -341,7 +341,7 @@ class App:
             space_id=space.id, note_id=None, user_id=current_user.id, filename=filename, content=content, mime_type=mime_type
         )
 
-    async def get_attachment_path(self, auth_token: AuthToken, space_slug: str, attachment_id: UUID) -> AttachmentFileInfo:
+    async def get_attachment_file_info(self, auth_token: AuthToken, space_slug: str, attachment_id: UUID) -> AttachmentFileInfo:
         """Get attachment file path and metadata (members only).
 
         Returns:
@@ -354,7 +354,7 @@ class App:
         if attachment.space_id != space.id:
             raise NotFoundError(f"Attachment {attachment_id} not found in space {space_slug}")
 
-        return await self._core.services.attachment.get_attachment_file_path(attachment_id)
+        return await self._core.services.attachment.get_attachment_file_info(attachment_id)
 
     async def get_image_preview_path(
         self, auth_token: AuthToken, space_slug: str, note_number: int, field_id: str, preview_key: str

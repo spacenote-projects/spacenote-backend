@@ -1,13 +1,11 @@
 from datetime import datetime
+from pathlib import Path
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 from spacenote.core.db import MongoModel
-from spacenote.core.modules.attachment.utils import sanitize_filename
 from spacenote.utils import now
-
-SPACE_ATTACHMENTS_DIR = "__space__"
 
 
 class Attachment(MongoModel):
@@ -24,26 +22,10 @@ class Attachment(MongoModel):
 
     created_at: datetime = Field(default_factory=now)
 
-    def get_storage_path(self, note_number: int | None = None) -> str:
-        """Calculate storage path from attachment properties.
-
-        Args:
-            note_number: Note number if attachment belongs to a note
-
-        Returns:
-            Relative path within attachments directory
-        """
-        sanitized = sanitize_filename(self.filename)
-        file_part = f"{self.id}__{self.number}__{sanitized}"
-
-        if note_number is not None:
-            return f"{self.space_id}/{note_number}/{file_part}"
-        return f"{self.space_id}/{SPACE_ATTACHMENTS_DIR}/{file_part}"
-
 
 class AttachmentFileInfo(BaseModel):
     """Information about an attachment file for download."""
 
-    file_path: str = Field(..., description="Absolute path to file on disk")
+    file_path: Path = Field(..., description="Absolute path to file on disk")
     filename: str = Field(..., description="Original filename")
     mime_type: str = Field(..., description="MIME type")

@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -179,7 +180,7 @@ class SpaceService(Service):
         return await self.update_space_cache(space_id)
 
     async def update_slug(self, space_id: UUID, new_slug: str) -> Space:
-        """Update the slug of a space."""
+        """Update the slug of a space and rename attachment folder."""
         space = self.get_space(space_id)
 
         if not utils.is_slug(new_slug):
@@ -190,6 +191,14 @@ class SpaceService(Service):
 
         if self.has_slug(new_slug):
             raise ValidationError(f"Space with slug '{new_slug}' already exists")
+
+        old_folder = Path(self.core.config.attachments_path) / space.slug
+        new_folder = Path(self.core.config.attachments_path) / new_slug
+
+        if old_folder.exists():
+            new_folder.parent.mkdir(parents=True, exist_ok=True)
+            old_folder.rename(new_folder)
+            logger.debug("Renamed attachment folder", old_slug=space.slug, new_slug=new_slug)
 
         await self._collection.update_one({"_id": space_id}, {"$set": {"slug": new_slug}})
         return await self.update_space_cache(space_id)

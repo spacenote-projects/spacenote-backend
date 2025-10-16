@@ -3,6 +3,33 @@
 import re
 from pathlib import Path
 
+SPACE_ATTACHMENTS_DIR = "__space__"
+
+
+def get_attachment_storage_path(
+    space_slug: str,
+    attachment_number: int,
+    filename: str,
+    note_number: int | None = None,
+) -> Path:
+    """Calculate storage path for an attachment.
+
+    Args:
+        space_slug: Space slug
+        attachment_number: Attachment number (unique within space)
+        filename: Original filename (will be sanitized)
+        note_number: Note number if attachment belongs to a note
+
+    Returns:
+        Relative path within attachments directory
+    """
+    sanitized = sanitize_filename(filename)
+    file_part = f"{attachment_number}__{sanitized}"
+
+    if note_number is not None:
+        return Path(f"{space_slug}/{note_number}/{file_part}")
+    return Path(f"{space_slug}/{SPACE_ATTACHMENTS_DIR}/{file_part}")
+
 
 def sanitize_filename(filename: str) -> str:
     """Sanitize filename for safe filesystem storage on Unix-like systems.

@@ -7,6 +7,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
 from spacenote.core.modules.attachment.models import Attachment, AttachmentFileInfo
+from spacenote.core.modules.attachment.utils import get_attachment_storage_path
 from spacenote.core.modules.counter.models import CounterType
 from spacenote.errors import NotFoundError, ValidationError
 
@@ -60,6 +61,7 @@ class AttachmentService(Service):
         Returns:
             Created attachment
         """
+        space = self.core.services.space.get_space(space_id)
         number = await self.core.services.counter.get_next_sequence(space_id, CounterType.ATTACHMENT)
         attachment = Attachment(
             space_id=space_id,
@@ -71,7 +73,12 @@ class AttachmentService(Service):
             mime_type=mime_type,
         )
 
-        storage_path = Path(self.core.config.attachments_path) / attachment.get_storage_path()
+        storage_path = Path(self.core.config.attachments_path) / get_attachment_storage_path(
+            space_slug=space.slug,
+            attachment_number=attachment.number,
+            filename=attachment.filename,
+            note_number=None,
+        )
         storage_path.parent.mkdir(parents=True, exist_ok=True)
         storage_path.write_bytes(content)
 
@@ -96,9 +103,20 @@ class AttachmentService(Service):
             raise ValidationError(f"Attachment {attachment_id} is already attached to note {attachment.note_id}")
 
         note = await self.core.services.note.get_note(note_id)
+        space = self.core.services.space.get_space(attachment.space_id)
 
-        old_path = Path(self.core.config.attachments_path) / attachment.get_storage_path(note_number=None)
-        new_path = Path(self.core.config.attachments_path) / attachment.get_storage_path(note_number=note.number)
+        old_path = Path(self.core.config.attachments_path) / get_attachment_storage_path(
+            space_slug=space.slug,
+            attachment_number=attachment.number,
+            filename=attachment.filename,
+            note_number=None,
+        )
+        new_path = Path(self.core.config.attachments_path) / get_attachment_storage_path(
+            space_slug=space.slug,
+            attachment_number=attachment.number,
+            filename=attachment.filename,
+            note_number=note.number,
+        )
 
         if not old_path.exists():
             raise ValidationError(f"Attachment file not found: {old_path}")
@@ -110,8 +128,8 @@ class AttachmentService(Service):
         await self._collection.update_one({"_id": attachment_id}, {"$set": {"note_id": note_id}})
         logger.debug("Attached attachment to note", attachment_id=attachment_id, note_id=note_id, note_number=note.number)
 
-    async def get_attachment_file_path(self, attachment_id: UUID) -> AttachmentFileInfo:
-        """Get file path for attachment download.
+    async def get_attachment_file_info(self, attachment_id: UUID) -> AttachmentFileInfo:
+        """Get file info for attachment download.
 
         Args:
             attachment_id: Attachment ID
@@ -123,14 +141,21 @@ class AttachmentService(Service):
             NotFoundError: If attachment or file not found
         """
         attachment = await self.get_attachment(attachment_id)
+        space = self.core.services.space.get_space(attachment.space_id)
 
+        note_number = None
         if attachment.note_id is not None:
             note = await self.core.services.note.get_note(attachment.note_id)
-            file_path = Path(self.core.config.attachments_path) / attachment.get_storage_path(note.number)
-        else:
-            file_path = Path(self.core.config.attachments_path) / attachment.get_storage_path(note_number=None)
+            note_number = note.number
+
+        file_path = Path(self.core.config.attachments_path) / get_attachment_storage_path(
+            space_slug=space.slug,
+            attachment_number=attachment.number,
+            filename=attachment.filename,
+            note_number=note_number,
+        )
 
         if not file_path.exists():
             raise NotFoundError(f"Attachment file not found: {attachment_id}")
 
-        return AttachmentFileInfo(file_path=str(file_path), filename=attachment.filename, mime_type=attachment.mime_type)
+        return AttachmentFileInfo(file_path=file_path, filename=attachment.filename, mime_type=attachment.mime_type)

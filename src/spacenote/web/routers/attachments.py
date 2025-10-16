@@ -44,7 +44,7 @@ async def upload_attachment(space_slug: str, file: UploadFile, app: AppDep, auth
     },
 )
 async def download_attachment(space_slug: str, attachment_id: UUID, app: AppDep, auth_token: AuthTokenDep) -> FileResponse:
-    file_info = await app.get_attachment_path(auth_token, space_slug, attachment_id)
+    file_info = await app.get_attachment_file_info(auth_token, space_slug, attachment_id)
     return FileResponse(
         path=file_info.file_path,
         media_type=file_info.mime_type,
