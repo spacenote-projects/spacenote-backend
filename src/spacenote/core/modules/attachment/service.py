@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -7,7 +6,11 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
 from spacenote.core.modules.attachment.models import Attachment, AttachmentFileInfo
-from spacenote.core.modules.attachment.utils import get_attachment_storage_path
+from spacenote.core.modules.attachment.storage import (
+    get_attachment_file_path,
+    move_attachment_file,
+    write_attachment_file,
+)
 from spacenote.core.modules.counter.models import CounterType
 from spacenote.errors import NotFoundError, ValidationError
 
@@ -73,17 +76,16 @@ class AttachmentService(Service):
             mime_type=mime_type,
         )
 
-        storage_path = Path(self.core.config.attachments_path) / get_attachment_storage_path(
+        write_attachment_file(
+            attachments_path=self.core.config.attachments_path,
             space_slug=space.slug,
             attachment_number=attachment.number,
-            filename=attachment.filename,
             note_number=None,
+            content=content,
         )
-        storage_path.parent.mkdir(parents=True, exist_ok=True)
-        storage_path.write_bytes(content)
 
-        await self._collection.insert_one(attachment.model_dump(by_alias=True))
-        logger.info("Created attachment", attachment_id=attachment.id, space_id=space_id, filename=filename)
+        await self._collection.insert_one(attachment.to_mongo())
+        logger.debug("Created attachment", attachment_id=attachment.id, space_id=space_id, filename=filename)
         return attachment
 
     async def attach_to_note(self, attachment_id: UUID, note_id: UUID) -> None:
@@ -105,25 +107,17 @@ class AttachmentService(Service):
         note = await self.core.services.note.get_note(note_id)
         space = self.core.services.space.get_space(attachment.space_id)
 
-        old_path = Path(self.core.config.attachments_path) / get_attachment_storage_path(
-            space_slug=space.slug,
-            attachment_number=attachment.number,
-            filename=attachment.filename,
-            note_number=None,
-        )
-        new_path = Path(self.core.config.attachments_path) / get_attachment_storage_path(
-            space_slug=space.slug,
-            attachment_number=attachment.number,
-            filename=attachment.filename,
-            note_number=note.number,
-        )
-
-        if not old_path.exists():
-            raise ValidationError(f"Attachment file not found: {old_path}")
-
-        new_path.parent.mkdir(parents=True, exist_ok=True)
-        old_path.rename(new_path)
-        logger.debug("Moved attachment file", attachment_id=attachment_id, old_path=str(old_path), new_path=str(new_path))
+        try:
+            old_path, new_path = move_attachment_file(
+                attachments_path=self.core.config.attachments_path,
+                space_slug=space.slug,
+                attachment_number=attachment.number,
+                old_note_number=None,
+                new_note_number=note.number,
+            )
+            logger.debug("Moved attachment file", attachment_id=attachment_id, old_path=str(old_path), new_path=str(new_path))
+        except FileNotFoundError as e:
+            raise ValidationError(str(e)) from e
 
         await self._collection.update_one({"_id": attachment_id}, {"$set": {"note_id": note_id}})
         logger.debug("Attached attachment to note", attachment_id=attachment_id, note_id=note_id, note_number=note.number)
@@ -148,10 +142,10 @@ class AttachmentService(Service):
             note = await self.core.services.note.get_note(attachment.note_id)
             note_number = note.number
 
-        file_path = Path(self.core.config.attachments_path) / get_attachment_storage_path(
+        file_path = get_attachment_file_path(
+            attachments_path=self.core.config.attachments_path,
             space_slug=space.slug,
             attachment_number=attachment.number,
-            filename=attachment.filename,
             note_number=note_number,
         )
 

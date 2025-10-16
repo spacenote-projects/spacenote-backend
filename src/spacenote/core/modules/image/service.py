@@ -9,7 +9,7 @@ import structlog
 from pymongo.asynchronous.database import AsyncDatabase
 
 from spacenote.core.core import Service
-from spacenote.core.modules.attachment.utils import get_attachment_storage_path
+from spacenote.core.modules.attachment.storage import get_attachment_file_path
 from spacenote.core.modules.field.models import FieldOption, FieldType, SpaceField
 from spacenote.core.modules.image.processor import generate_preview
 from spacenote.core.modules.image.utils import get_preview_path, is_valid_image
@@ -74,10 +74,10 @@ class ImageService(Service):
         if not attachment.mime_type.startswith("image/"):
             raise ValidationError(f"Attachment {attachment_id} is not an image (mime_type: {attachment.mime_type})")
 
-        file_path = Path(self.core.config.attachments_path) / get_attachment_storage_path(
+        file_path = get_attachment_file_path(
+            attachments_path=self.core.config.attachments_path,
             space_slug=space.slug,
             attachment_number=attachment.number,
-            filename=attachment.filename,
             note_number=None,
         )
 
@@ -129,10 +129,10 @@ class ImageService(Service):
             raise ValidationError(f"Attachment {attachment_id} is not an image (mime_type: {attachment.mime_type})")
 
         # Get attachment file path
-        attachment_path = Path(self.core.config.attachments_path) / get_attachment_storage_path(
+        attachment_path = get_attachment_file_path(
+            attachments_path=self.core.config.attachments_path,
             space_slug=space.slug,
             attachment_number=attachment.number,
-            filename=attachment.filename,
             note_number=note_number,
         )
 
