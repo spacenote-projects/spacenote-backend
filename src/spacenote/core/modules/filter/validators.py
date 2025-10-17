@@ -107,12 +107,12 @@ def validate_user_value(field: SpaceField, value: FieldValueType, space: Space, 
     raise ValidationError(f"Filter value for user field '{field.id}' must be a UUID, username string, or '$me'")
 
 
-def validate_string_choice_value(field: SpaceField, operator: FilterOperator, value: FieldValueType) -> str | list[str]:
-    """Validate and normalize string choice field filter value."""
+def validate_select_value(field: SpaceField, operator: FilterOperator, value: FieldValueType) -> str | list[str]:
+    """Validate and normalize select field filter value."""
     # Get allowed values from field options
     allowed_values = field.options.get(FieldOption.VALUES)
     if not allowed_values or not isinstance(allowed_values, list):
-        raise ValidationError(f"String choice field '{field.id}' must have VALUES option defined")
+        raise ValidationError(f"Select field '{field.id}' must have VALUES option defined")
 
     if operator in (FilterOperator.IN, FilterOperator.NIN):
         if not isinstance(value, list):
@@ -127,7 +127,7 @@ def validate_string_choice_value(field: SpaceField, operator: FilterOperator, va
         return value
 
     if not isinstance(value, str):
-        raise ValidationError(f"Filter value for string choice field '{field.id}' must be a string")
+        raise ValidationError(f"Filter value for select field '{field.id}' must be a string")
     if value not in allowed_values:
         raise ValidationError(f"Invalid choice for field '{field.id}': '{value}'. Allowed values: {', '.join(allowed_values)}")
     return value
@@ -166,8 +166,8 @@ def validate_filter_value(
             raise ValidationError(f"Operator '{operator}' cannot be used with null values")
         return None
 
-    if field.type == FieldType.STRING_CHOICE:
-        return validate_string_choice_value(field, operator, value)
+    if field.type == FieldType.SELECT:
+        return validate_select_value(field, operator, value)
     if field.type in {FieldType.STRING, FieldType.MARKDOWN}:
         return validate_string_value(field, value)
     if field.type == FieldType.BOOLEAN:

@@ -1,25 +1,25 @@
-"""Tests for STRING_CHOICE field validator."""
+"""Tests for SELECT field validator."""
 
 import pytest
 
 from spacenote.core.modules.field.models import FieldOption, FieldType, SpaceField
-from spacenote.core.modules.field.validators import StringChoiceValidator
+from spacenote.core.modules.field.validators import SelectValidator
 from spacenote.errors import ValidationError
 
 
-class TestStringChoiceValueMaps:
-    """Tests for value_maps feature in STRING_CHOICE fields."""
+class TestSelectValueMaps:
+    """Tests for value_maps feature in SELECT fields."""
 
     @pytest.fixture(autouse=True)
     def setup(self, mock_space, mock_members):
         """Set up validator for all tests in this class."""
-        self.validator = StringChoiceValidator(mock_space, mock_members)
+        self.validator = SelectValidator(mock_space, mock_members)
 
     def test_valid_value_maps_with_multiple_properties(self):
         """Test that valid value_maps with multiple properties are accepted."""
         field = SpaceField(
             id="status",
-            type=FieldType.STRING_CHOICE,
+            type=FieldType.SELECT,
             required=True,
             options={
                 FieldOption.VALUES: ["new", "in_progress", "done"],
@@ -37,14 +37,14 @@ class TestStringChoiceValueMaps:
     def test_empty_value_maps_allowed(self):
         """Test that empty value_maps dictionary is valid."""
         field = SpaceField(
-            id="priority", type=FieldType.STRING_CHOICE, options={FieldOption.VALUES: ["low", "high"], FieldOption.VALUE_MAPS: {}}
+            id="priority", type=FieldType.SELECT, options={FieldOption.VALUES: ["low", "high"], FieldOption.VALUE_MAPS: {}}
         )
         result = self.validator.validate_field_definition(field)
         assert result.options[FieldOption.VALUE_MAPS] == {}
 
     def test_no_value_maps_is_optional(self):
         """Test that value_maps is completely optional."""
-        field = SpaceField(id="choice", type=FieldType.STRING_CHOICE, options={FieldOption.VALUES: ["yes", "no", "maybe"]})
+        field = SpaceField(id="choice", type=FieldType.SELECT, options={FieldOption.VALUES: ["yes", "no", "maybe"]})
         result = self.validator.validate_field_definition(field)
         assert FieldOption.VALUE_MAPS not in result.options
 
@@ -52,7 +52,7 @@ class TestStringChoiceValueMaps:
         """Test that missing keys in a value_map raises ValidationError."""
         field = SpaceField(
             id="severity",
-            type=FieldType.STRING_CHOICE,
+            type=FieldType.SELECT,
             options={
                 FieldOption.VALUES: ["low", "medium", "high"],
                 FieldOption.VALUE_MAPS: {
@@ -67,7 +67,7 @@ class TestStringChoiceValueMaps:
         """Test that extra keys in a value_map raises ValidationError."""
         field = SpaceField(
             id="level",
-            type=FieldType.STRING_CHOICE,
+            type=FieldType.SELECT,
             options={
                 FieldOption.VALUES: ["info", "warning", "error"],
                 FieldOption.VALUE_MAPS: {
@@ -87,7 +87,7 @@ class TestStringChoiceValueMaps:
         """Test that each map must have all required keys."""
         field = SpaceField(
             id="priority",
-            type=FieldType.STRING_CHOICE,
+            type=FieldType.SELECT,
             options={
                 FieldOption.VALUES: ["low", "medium", "high"],
                 FieldOption.VALUE_MAPS: {
@@ -103,7 +103,7 @@ class TestStringChoiceValueMaps:
         """Test a single value_map with all required keys."""
         field = SpaceField(
             id="status",
-            type=FieldType.STRING_CHOICE,
+            type=FieldType.SELECT,
             options={
                 FieldOption.VALUES: ["active", "inactive"],
                 FieldOption.VALUE_MAPS: {"label": {"active": "Active", "inactive": "Inactive"}},
@@ -114,16 +114,16 @@ class TestStringChoiceValueMaps:
         assert len(result.options[FieldOption.VALUE_MAPS]["label"]) == 2
 
 
-class TestStringChoiceFieldParsing:
-    """Tests for STRING_CHOICE field value parsing with value_maps."""
+class TestSelectFieldParsing:
+    """Tests for SELECT field value parsing with value_maps."""
 
     @pytest.fixture(autouse=True)
     def setup(self, mock_space, mock_members):
         """Set up validator and field for parsing tests."""
-        self.validator = StringChoiceValidator(mock_space, mock_members)
+        self.validator = SelectValidator(mock_space, mock_members)
         self.field = SpaceField(
             id="status",
-            type=FieldType.STRING_CHOICE,
+            type=FieldType.SELECT,
             required=True,
             options={
                 FieldOption.VALUES: ["new", "active", "closed"],
@@ -152,7 +152,7 @@ class TestStringChoiceFieldParsing:
         """Test that optional fields with value_maps can be empty."""
         optional_field = SpaceField(
             id="priority",
-            type=FieldType.STRING_CHOICE,
+            type=FieldType.SELECT,
             required=False,
             options={FieldOption.VALUES: ["low", "high"], FieldOption.VALUE_MAPS: {"color": {"low": "#green", "high": "#red"}}},
         )
@@ -161,19 +161,19 @@ class TestStringChoiceFieldParsing:
         assert self.validator.parse_value(validated, None) is None
 
 
-class TestStringChoiceComplexScenarios:
+class TestSelectComplexScenarios:
     """Tests for complex real-world scenarios with value_maps."""
 
     @pytest.fixture(autouse=True)
     def setup(self, mock_space, mock_members):
         """Set up validator for complex scenario tests."""
-        self.validator = StringChoiceValidator(mock_space, mock_members)
+        self.validator = SelectValidator(mock_space, mock_members)
 
     def test_task_management_system_with_rich_metadata(self):
         """Test a realistic task management system with multiple value_maps."""
         task_field = SpaceField(
             id="task_status",
-            type=FieldType.STRING_CHOICE,
+            type=FieldType.SELECT,
             required=True,
             options={
                 FieldOption.VALUES: ["todo", "in_progress", "review", "done", "blocked"],
@@ -214,7 +214,7 @@ class TestStringChoiceComplexScenarios:
         """Test a priority system with semantic value mappings."""
         priority_field = SpaceField(
             id="priority",
-            type=FieldType.STRING_CHOICE,
+            type=FieldType.SELECT,
             options={
                 FieldOption.VALUES: ["p0", "p1", "p2", "p3"],
                 FieldOption.VALUE_MAPS: {

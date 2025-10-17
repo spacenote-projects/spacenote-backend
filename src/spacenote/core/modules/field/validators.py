@@ -312,8 +312,8 @@ class FloatValidator(FieldValidator):
                 raise ValidationError(f"Value for field '{field.id}' is above maximum: {value} > {max_val}")
 
 
-class StringChoiceValidator(FieldValidator):
-    """Validator for string choice (single select) fields."""
+class SelectValidator(FieldValidator):
+    """Validator for select fields."""
 
     def parse_value(self, field: SpaceField, raw_value: str | None) -> FieldValueType:
         if raw_value is None:
@@ -338,10 +338,10 @@ class StringChoiceValidator(FieldValidator):
 
     def _validate_type_specific_field_definition(self, field: SpaceField) -> SpaceField:
         if FieldOption.VALUES not in field.options:
-            raise ValidationError("String choice fields must have 'values' option")
+            raise ValidationError("Select fields must have 'values' option")
         values = field.options[FieldOption.VALUES]
         if not isinstance(values, list) or not all(isinstance(v, str) for v in values):
-            raise ValidationError("String choice 'values' must be a list of strings")
+            raise ValidationError("Select 'values' must be a list of strings")
 
         # Validate VALUE_MAPS if present
         if FieldOption.VALUE_MAPS in field.options:
@@ -500,7 +500,7 @@ _VALIDATOR_CLASSES: dict[FieldType, type[FieldValidator]] = {
     FieldType.BOOLEAN: BooleanValidator,
     FieldType.INT: IntValidator,
     FieldType.FLOAT: FloatValidator,
-    FieldType.STRING_CHOICE: StringChoiceValidator,
+    FieldType.SELECT: SelectValidator,
     FieldType.TAGS: TagsValidator,
     FieldType.DATETIME: DateTimeValidator,
     FieldType.IMAGE: ImageValidator,

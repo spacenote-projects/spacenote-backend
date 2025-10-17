@@ -23,7 +23,7 @@ def _generate_mock_note_fields(space: Space) -> dict[str, FieldValueType]:
             mock_fields[field.id] = f"# Test {field.id}\n\nSample markdown content"
         elif field.type == FieldType.BOOLEAN:
             mock_fields[field.id] = True
-        elif field.type == FieldType.STRING_CHOICE:
+        elif field.type == FieldType.SELECT:
             values = field.options.get(FieldOption.VALUES, [])
             if values and isinstance(values, list):
                 mock_fields[field.id] = values[0]

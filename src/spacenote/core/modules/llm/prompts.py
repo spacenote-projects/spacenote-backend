@@ -94,7 +94,7 @@ EXTRACTION RULES:
    - For create_comment: identify note number and comment text
 
 4. Extract field values as strings (all values must be strings):
-   - For string_choice fields: use exact values from "Allowed values" list in space schema
+   - For select fields: use exact values from "Allowed values" list in space schema
    - For boolean fields: use "true" or "false" as strings
    - For user fields: can use "$me" for current user
    - For numbers: extract as strings (e.g., "5", "3.14")
@@ -103,4 +103,4 @@ EXTRACTION RULES:
 
 5. Only include fields mentioned by the user (except required fields for create_note)
 
-Respond with line-based format as shown in examples above."""
+Respond with line-based format as shown in examples above."""  # noqa: S608

@@ -19,7 +19,7 @@ class FieldType(StrEnum):
     STRING = "string"
     MARKDOWN = "markdown"
     BOOLEAN = "boolean"
-    STRING_CHOICE = "string_choice"  # Single select from predefined values
+    SELECT = "select"  # Single select from predefined values
     TAGS = "tags"  # Free-form tags
     USER = "user"  # Reference to space member
     DATETIME = "datetime"
@@ -31,10 +31,10 @@ class FieldType(StrEnum):
 class FieldOption(StrEnum):
     """Configuration options for field types."""
 
-    VALUES = "values"  # list[str] for STRING_CHOICE
+    VALUES = "values"  # list[str] for SELECT
     MIN = "min"  # int/float for numeric types
     MAX = "max"  # int/float for numeric types
-    VALUE_MAPS = "value_maps"  # dict[str, dict[str, str]] for STRING_CHOICE metadata
+    VALUE_MAPS = "value_maps"  # dict[str, dict[str, str]] for SELECT metadata
     PREVIEWS = "previews"  # dict[str, dict] for IMAGE preview configurations
 
 
@@ -53,8 +53,8 @@ class SpaceField(BaseModel):
     options: dict[FieldOption, FieldOptionValueType] = Field(
         default_factory=dict,
         description=(
-            "Field type-specific options (e.g., 'values' for string_choice, "
-            "'min'/'max' for numeric types, 'value_maps' for string_choice metadata)"
+            "Field type-specific options (e.g., 'values' for select, "
+            "'min'/'max' for numeric types, 'value_maps' for select metadata)"
         ),
     )
     default: FieldValueType = Field(None, description="Default value for this field")

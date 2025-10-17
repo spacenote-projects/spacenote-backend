@@ -13,7 +13,7 @@ from spacenote.core.modules.filter.validators import (
     validate_filter_value,
     validate_float_value,
     validate_int_value,
-    validate_string_choice_value,
+    validate_select_value,
     validate_string_value,
     validate_tags_value,
     validate_user_value,
@@ -201,88 +201,88 @@ class TestValidateUserValue:
             validate_user_value(field, 123, space, [user])
 
 
-class TestValidateStringChoiceValue:
-    """Tests for string choice value validation."""
+class TestValidateSelectValue:
+    """Tests for select value validation."""
 
     def test_single_string_value_accepted(self):
         """Test that single string values are accepted for EQ/NE operators."""
         field = SpaceField(
             id="status",
-            type=FieldType.STRING_CHOICE,
+            type=FieldType.SELECT,
             required=True,
             options={FieldOption.VALUES: ["active", "pending", "archived", "deleted"]},
         )
-        validate_string_choice_value(field, FilterOperator.EQ, "active")
+        validate_select_value(field, FilterOperator.EQ, "active")
 
     def test_list_value_for_in_operator(self):
         """Test that list values are accepted for IN operator."""
         field = SpaceField(
             id="status",
-            type=FieldType.STRING_CHOICE,
+            type=FieldType.SELECT,
             required=True,
             options={FieldOption.VALUES: ["active", "pending", "archived", "deleted"]},
         )
-        validate_string_choice_value(field, FilterOperator.IN, ["active", "pending"])
+        validate_select_value(field, FilterOperator.IN, ["active", "pending"])
 
     def test_list_value_for_nin_operator(self):
         """Test that list values are accepted for NIN operator."""
         field = SpaceField(
             id="status",
-            type=FieldType.STRING_CHOICE,
+            type=FieldType.SELECT,
             required=True,
             options={FieldOption.VALUES: ["active", "pending", "archived", "deleted"]},
         )
-        validate_string_choice_value(field, FilterOperator.NIN, ["archived", "deleted"])
+        validate_select_value(field, FilterOperator.NIN, ["archived", "deleted"])
 
     def test_non_list_for_in_raises_error(self):
         """Test that non-list values for IN operator raise ValidationError."""
         field = SpaceField(
             id="status",
-            type=FieldType.STRING_CHOICE,
+            type=FieldType.SELECT,
             required=True,
             options={FieldOption.VALUES: ["active", "pending"]},
         )
         with pytest.raises(ValidationError, match="must be a list"):
-            validate_string_choice_value(field, FilterOperator.IN, "active")
+            validate_select_value(field, FilterOperator.IN, "active")
 
     def test_non_string_in_list_raises_error(self):
         """Test that non-string items in list raise ValidationError."""
         field = SpaceField(
             id="status",
-            type=FieldType.STRING_CHOICE,
+            type=FieldType.SELECT,
             required=True,
             options={FieldOption.VALUES: ["active", "pending"]},
         )
         with pytest.raises(ValidationError, match="must be strings"):
-            validate_string_choice_value(field, FilterOperator.IN, ["active", 123])
+            validate_select_value(field, FilterOperator.IN, ["active", 123])
 
     def test_invalid_single_value_raises_error(self):
         """Test that value not in allowed list raises ValidationError."""
         field = SpaceField(
             id="status",
-            type=FieldType.STRING_CHOICE,
+            type=FieldType.SELECT,
             required=True,
             options={FieldOption.VALUES: ["active", "pending"]},
         )
         with pytest.raises(ValidationError, match=r"Invalid choice.*'invalid'.*Allowed values: active, pending"):
-            validate_string_choice_value(field, FilterOperator.EQ, "invalid")
+            validate_select_value(field, FilterOperator.EQ, "invalid")
 
     def test_invalid_value_in_list_raises_error(self):
         """Test that invalid value in list raises ValidationError."""
         field = SpaceField(
             id="status",
-            type=FieldType.STRING_CHOICE,
+            type=FieldType.SELECT,
             required=True,
             options={FieldOption.VALUES: ["active", "pending"]},
         )
         with pytest.raises(ValidationError, match=r"Invalid choice.*'invalid'.*Allowed values: active, pending"):
-            validate_string_choice_value(field, FilterOperator.IN, ["active", "invalid"])
+            validate_select_value(field, FilterOperator.IN, ["active", "invalid"])
 
     def test_missing_values_option_raises_error(self):
         """Test that missing VALUES option raises ValidationError."""
-        field = SpaceField(id="status", type=FieldType.STRING_CHOICE, required=True)
+        field = SpaceField(id="status", type=FieldType.SELECT, required=True)
         with pytest.raises(ValidationError, match="must have VALUES option defined"):
-            validate_string_choice_value(field, FilterOperator.EQ, "active")
+            validate_select_value(field, FilterOperator.EQ, "active")
 
 
 class TestValidateTagsValue:
@@ -346,12 +346,12 @@ class TestValidateFilterValue:
         result = validate_filter_value(int_field, FilterOperator.GT, 5, space, [])
         assert result == 5
 
-    def test_string_choice_validator_receives_operator(self):
-        """Test that STRING_CHOICE validator gets operator parameter."""
+    def test_select_validator_receives_operator(self):
+        """Test that SELECT validator gets operator parameter."""
         space = Space(id=uuid4(), slug="test", title="Test", members=[], fields=[])
         field = SpaceField(
             id="status",
-            type=FieldType.STRING_CHOICE,
+            type=FieldType.SELECT,
             required=True,
             options={FieldOption.VALUES: ["active", "pending"]},
         )

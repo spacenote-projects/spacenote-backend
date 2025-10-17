@@ -101,7 +101,7 @@ FIELD_TYPE_OPERATORS: dict[FieldType, set[FilterOperator]] = {
         FilterOperator.LT,
         FilterOperator.LTE,
     },
-    FieldType.STRING_CHOICE: {
+    FieldType.SELECT: {
         FilterOperator.EQ,
         FilterOperator.NE,
         FilterOperator.IN,
