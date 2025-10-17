@@ -16,21 +16,24 @@ SpaceNote is organized as a multi-repository project:
 spacenote-backend/
 ├── docs/                       # Documentation
 │   ├── architecture.md         # This file
-│   └── concepts.md            # Core domain concepts
+│   └── concepts.md             # Core domain concepts
 ├── src/spacenote/             # Main application code
 │   ├── core/                  # Core business logic
 │   │   ├── modules/           # Feature modules
-│   │   │   ├── user/         # User management
-│   │   │   ├── space/        # Space management
-│   │   │   ├── note/         # Note operations
-│   │   │   ├── field/        # Field definitions & validation
-│   │   │   ├── comment/      # Comment system
-│   │   │   ├── session/      # Session management
-│   │   │   ├── access/       # Access control
-│   │   │   ├── counter/      # ID generation
-│   │   │   ├── filter/       # Query filters
-│   │   │   ├── export/       # CSV/JSON export functionality
-│   │   │   └── telegram/     # Telegram bot integration
+│   │   │   ├── user/          # User management
+│   │   │   ├── space/         # Space management
+│   │   │   ├── note/          # Note operations
+│   │   │   ├── field/         # Field definitions & validation
+│   │   │   ├── comment/       # Comment system
+│   │   │   ├── session/       # Session management
+│   │   │   ├── access/        # Access control
+│   │   │   ├── counter/       # ID generation
+│   │   │   ├── filter/        # Query filters
+│   │   │   ├── export/        # CSV/JSON export functionality
+│   │   │   ├── attachment/    # Attachment management
+│   │   │   ├── image/         # Image processing
+│   │   │   ├── llm/           # LLM integration
+│   │   │   └── telegram/      # Telegram bot integration
 │   │   ├── core.py           # Core container & DI
 │   │   ├── db.py             # Database utilities
 │   │   └── pagination.py     # Pagination utilities
@@ -46,6 +49,8 @@ spacenote-backend/
 │   │   │   ├── filters.py    # Filter management endpoints
 │   │   │   ├── metadata.py   # Metadata endpoints
 │   │   │   ├── profile.py    # User profile endpoints
+│   │   │   ├── attachments.py # Attachment endpoints
+│   │   │   ├── llm.py        # LLM endpoints
 │   │   │   └── telegram.py   # Telegram integration endpoints
 │   │   ├── deps.py           # FastAPI dependencies
 │   │   ├── server.py         # FastAPI app setup
