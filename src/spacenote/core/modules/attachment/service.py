@@ -1,3 +1,5 @@
+import shutil
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -190,3 +192,19 @@ class AttachmentService(Service):
             raise NotFoundError(f"Attachment file not found: space_id={space_id}, number={attachment_number}")
 
         return AttachmentFileInfo(file_path=file_path, filename=attachment.filename, mime_type=attachment.mime_type)
+
+    async def delete_attachments_by_space(self, space_id: UUID) -> None:
+        """Delete all attachments for a space from database and filesystem.
+
+        Args:
+            space_id: Space ID to delete attachments for
+        """
+        space = self.core.services.space.get_space(space_id)
+        attachments_folder = Path(self.core.config.attachments_path) / space.slug
+
+        result = await self._collection.delete_many({"space_id": space_id})
+        logger.debug("Deleted attachment records", space_id=space_id, count=result.deleted_count)
+
+        if attachments_folder.exists():
+            shutil.rmtree(attachments_folder)
+            logger.debug("Deleted attachments folder", path=str(attachments_folder))

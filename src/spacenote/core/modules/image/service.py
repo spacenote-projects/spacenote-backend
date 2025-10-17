@@ -1,6 +1,7 @@
 """Service for managing image field previews."""
 
 import asyncio
+import shutil
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -221,3 +222,16 @@ class ImageService(Service):
             raise NotFoundError(f"Preview not found: {preview_key}")
 
         return preview_path
+
+    def delete_previews_by_space(self, space_id: UUID) -> None:
+        """Delete all image previews for a space from filesystem.
+
+        Args:
+            space_id: Space ID to delete previews for
+        """
+        space = self.core.services.space.get_space(space_id)
+        previews_folder = Path(self.core.config.previews_path) / space.slug
+
+        if previews_folder.exists():
+            shutil.rmtree(previews_folder)
+            logger.debug("Deleted previews folder", path=str(previews_folder))
