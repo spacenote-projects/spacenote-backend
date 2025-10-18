@@ -34,7 +34,7 @@ class TestImageValidator:
             id="photo",
             type=FieldType.IMAGE,
             required=False,
-            options={FieldOption.PREVIEWS: {"thumbnail": {"max_width": 200}}},
+            options={FieldOption.MAX_WIDTH: 1200},
         )
         validator = create_validator(FieldType.IMAGE, space, members=[])
         attachment_id = uuid4()
@@ -47,7 +47,7 @@ class TestImageValidator:
             id="photo",
             type=FieldType.IMAGE,
             required=False,
-            options={FieldOption.PREVIEWS: {"thumbnail": {"max_width": 200}}},
+            options={FieldOption.MAX_WIDTH: 1200},
         )
         validator = create_validator(FieldType.IMAGE, space, members=[])
         with pytest.raises(ValidationError, match="Invalid UUID"):
@@ -59,7 +59,7 @@ class TestImageValidator:
             id="photo",
             type=FieldType.IMAGE,
             required=False,
-            options={FieldOption.PREVIEWS: {"thumbnail": {"max_width": 200}}},
+            options={FieldOption.MAX_WIDTH: 1200},
         )
         validator = create_validator(FieldType.IMAGE, space, members=[])
         result = validator.parse_value(field, "")
@@ -71,7 +71,7 @@ class TestImageValidator:
             id="photo",
             type=FieldType.IMAGE,
             required=True,
-            options={FieldOption.PREVIEWS: {"thumbnail": {"max_width": 200}}},
+            options={FieldOption.MAX_WIDTH: 1200},
         )
         validator = create_validator(FieldType.IMAGE, space, members=[])
         with pytest.raises(ValidationError, match="Required field"):
@@ -83,7 +83,7 @@ class TestImageValidator:
             id="photo",
             type=FieldType.IMAGE,
             required=False,
-            options={FieldOption.PREVIEWS: {"thumbnail": {"max_width": 200}}},
+            options={FieldOption.MAX_WIDTH: 1200},
         )
         validator = create_validator(FieldType.IMAGE, space, members=[])
         result = validator.parse_value(field, None)
@@ -95,7 +95,7 @@ class TestImageValidator:
             id="photo",
             type=FieldType.IMAGE,
             required=True,
-            options={FieldOption.PREVIEWS: {"thumbnail": {"max_width": 200}}},
+            options={FieldOption.MAX_WIDTH: 1200},
         )
         validator = create_validator(FieldType.IMAGE, space, members=[])
         with pytest.raises(ValidationError, match="Required field"):
@@ -109,74 +109,43 @@ class TestImageValidator:
             type=FieldType.IMAGE,
             required=False,
             default=default_attachment_id,
-            options={FieldOption.PREVIEWS: {"thumbnail": {"max_width": 200}}},
+            options={FieldOption.MAX_WIDTH: 1200},
         )
         validator = create_validator(FieldType.IMAGE, space, members=[])
         result = validator.parse_value(field, None)
         assert result == default_attachment_id
 
-    def test_field_definition_requires_previews(self, space):
-        """Test that field definition must have previews option."""
+    def test_field_definition_requires_max_width(self, space):
+        """Test that field definition must have max_width option."""
         field = SpaceField(id="photo", type=FieldType.IMAGE, required=False, options={})
         validator = create_validator(FieldType.IMAGE, space, members=[])
-        with pytest.raises(ValidationError, match="must have 'previews' option"):
-            validator.validate_field_definition(field)
-
-    def test_previews_cannot_be_empty(self, space):
-        """Test that previews dictionary cannot be empty."""
-        field = SpaceField(id="photo", type=FieldType.IMAGE, required=False, options={FieldOption.PREVIEWS: {}})
-        validator = create_validator(FieldType.IMAGE, space, members=[])
-        with pytest.raises(ValidationError, match="cannot be empty"):
-            validator.validate_field_definition(field)
-
-    def test_preview_config_must_have_max_width(self, space):
-        """Test that preview config must have max_width."""
-        field = SpaceField(id="photo", type=FieldType.IMAGE, required=False, options={FieldOption.PREVIEWS: {"thumbnail": {}}})
-        validator = create_validator(FieldType.IMAGE, space, members=[])
-        with pytest.raises(ValidationError, match="must have 'max_width'"):
+        with pytest.raises(ValidationError, match="must have 'max_width' option"):
             validator.validate_field_definition(field)
 
     def test_max_width_must_be_positive_integer(self, space):
         """Test that max_width must be a positive integer."""
-        field = SpaceField(
-            id="photo", type=FieldType.IMAGE, required=False, options={FieldOption.PREVIEWS: {"thumbnail": {"max_width": -100}}}
-        )
+        field = SpaceField(id="photo", type=FieldType.IMAGE, required=False, options={FieldOption.MAX_WIDTH: -100})
         validator = create_validator(FieldType.IMAGE, space, members=[])
         with pytest.raises(ValidationError, match="must be a positive integer"):
             validator.validate_field_definition(field)
 
     def test_max_width_zero_is_invalid(self, space):
         """Test that max_width cannot be zero."""
-        field = SpaceField(
-            id="photo", type=FieldType.IMAGE, required=False, options={FieldOption.PREVIEWS: {"thumbnail": {"max_width": 0}}}
-        )
+        field = SpaceField(id="photo", type=FieldType.IMAGE, required=False, options={FieldOption.MAX_WIDTH: 0})
         validator = create_validator(FieldType.IMAGE, space, members=[])
         with pytest.raises(ValidationError, match="must be a positive integer"):
             validator.validate_field_definition(field)
 
-    def test_max_width_string_is_invalid(self, space):
-        """Test that max_width must be an integer, not string."""
-        field = SpaceField(
-            id="photo", type=FieldType.IMAGE, required=False, options={FieldOption.PREVIEWS: {"thumbnail": {"max_width": "200"}}}
-        )
+    def test_max_width_float_is_invalid(self, space):
+        """Test that max_width must be an integer, not float."""
+        field = SpaceField(id="photo", type=FieldType.IMAGE, required=False, options={FieldOption.MAX_WIDTH: 200.5})
         validator = create_validator(FieldType.IMAGE, space, members=[])
         with pytest.raises(ValidationError, match="must be a positive integer"):
             validator.validate_field_definition(field)
 
-    def test_multiple_preview_sizes(self, space):
-        """Test that multiple preview sizes can be configured."""
-        field = SpaceField(
-            id="photo",
-            type=FieldType.IMAGE,
-            required=False,
-            options={
-                FieldOption.PREVIEWS: {
-                    "thumbnail": {"max_width": 200},
-                    "medium": {"max_width": 600},
-                    "large": {"max_width": 1200},
-                }
-            },
-        )
+    def test_valid_max_width(self, space):
+        """Test that valid max_width is accepted."""
+        field = SpaceField(id="photo", type=FieldType.IMAGE, required=False, options={FieldOption.MAX_WIDTH: 1200})
         validator = create_validator(FieldType.IMAGE, space, members=[])
         validated_field = validator.validate_field_definition(field)
         assert validated_field == field

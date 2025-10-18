@@ -454,30 +454,13 @@ class ImageValidator(FieldValidator):
         return attachment_id
 
     def _validate_type_specific_field_definition(self, field: SpaceField) -> SpaceField:
-        if FieldOption.PREVIEWS not in field.options:
-            raise ValidationError("Image fields must have 'previews' option")
+        if FieldOption.MAX_WIDTH not in field.options:
+            raise ValidationError("Image fields must have 'max_width' option")
 
-        previews = field.options[FieldOption.PREVIEWS]
+        max_width = field.options[FieldOption.MAX_WIDTH]
 
-        if not isinstance(previews, dict):
-            raise ValidationError("Image field 'previews' option must be a dictionary")
-
-        if not previews:
-            raise ValidationError("Image field 'previews' option cannot be empty")
-
-        for preview_key, preview_config in previews.items():
-            if not isinstance(preview_key, str):
-                raise ValidationError(f"Preview key must be a string, got {type(preview_key).__name__}")
-
-            if not isinstance(preview_config, dict):
-                raise ValidationError(f"Preview config for '{preview_key}' must be a dictionary")
-
-            if "max_width" not in preview_config:
-                raise ValidationError(f"Preview config for '{preview_key}' must have 'max_width'")
-
-            max_width = preview_config["max_width"]
-            if not isinstance(max_width, int) or max_width <= 0:
-                raise ValidationError(f"Preview 'max_width' for '{preview_key}' must be a positive integer")
+        if not isinstance(max_width, int) or max_width <= 0:
+            raise ValidationError("Image field 'max_width' must be a positive integer")
 
         return field
 

@@ -6,8 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-# Type for field option values (VALUES, MIN, MAX, VALUE_MAPS, PREVIEWS)
-FieldOptionValueType = list[str] | int | float | dict[str, dict[str, str]] | dict[str, dict[str, int]]
+# Type for field option values (VALUES, MIN, MAX, VALUE_MAPS, MAX_WIDTH)
+FieldOptionValueType = list[str] | int | float | dict[str, dict[str, str]]
 
 # Type for actual field values in notes
 FieldValueType = str | bool | list[str] | int | float | datetime | UUID | None
@@ -25,7 +25,7 @@ class FieldType(StrEnum):
     DATETIME = "datetime"
     INT = "int"
     FLOAT = "float"
-    IMAGE = "image"  # Reference to image attachment with previews
+    IMAGE = "image"  # Reference to image attachment with preview
 
 
 class FieldOption(StrEnum):
@@ -35,7 +35,7 @@ class FieldOption(StrEnum):
     MIN = "min"  # int/float for numeric types
     MAX = "max"  # int/float for numeric types
     VALUE_MAPS = "value_maps"  # dict[str, dict[str, str]] for SELECT metadata
-    PREVIEWS = "previews"  # dict[str, dict] for IMAGE preview configurations
+    MAX_WIDTH = "max_width"  # int for IMAGE preview max width
 
 
 class SpecialValue(StrEnum):
@@ -54,7 +54,7 @@ class SpaceField(BaseModel):
         default_factory=dict,
         description=(
             "Field type-specific options (e.g., 'values' for select, "
-            "'min'/'max' for numeric types, 'value_maps' for select metadata)"
+            "'min'/'max' for numeric types, 'value_maps' for select metadata, 'max_width' for image)"
         ),
     )
     default: FieldValueType = Field(None, description="Default value for this field")

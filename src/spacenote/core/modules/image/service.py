@@ -1,4 +1,4 @@
-"""Service for managing image field previews."""
+"""Service for managing IMAGE field type."""
 
 import asyncio
 import shutil
@@ -12,24 +12,24 @@ from pymongo.asynchronous.database import AsyncDatabase
 from spacenote.core.core import Service
 from spacenote.core.modules.attachment.storage import get_attachment_file_path
 from spacenote.core.modules.field.models import FieldOption, FieldType, SpaceField
-from spacenote.core.modules.image.preview import generate_preview, get_preview_path, is_valid_image
+from spacenote.core.modules.image.image import generate_image, get_image_path, is_valid_image
 from spacenote.errors import NotFoundError, ValidationError
 
 logger = structlog.get_logger(__name__)
 
 
 class ImageService(Service):
-    """Manages image preview generation for IMAGE field types."""
+    """Manages image generation for IMAGE field types."""
 
     def __init__(self, database: AsyncDatabase[dict[str, Any]]) -> None:
         super().__init__(database)
         self._background_tasks: set[asyncio.Task[Any]] = set()
 
     def process_note_images(self, note_id: UUID) -> None:
-        """Process IMAGE fields for a note: attach files and generate previews.
+        """Process IMAGE fields for a note: attach files and generate images.
 
         This method attaches IMAGE field attachments to the note and starts
-        background tasks to generate previews.
+        background tasks to generate images.
 
         Args:
             note_id: The note ID
@@ -43,7 +43,7 @@ class ImageService(Service):
         note = await self.core.services.note.get_note(note_id)
         space = self.core.services.space.get_space(note.space_id)
 
-        preview_tasks = []
+        image_tasks = []
         for field in space.fields:
             if field.type != FieldType.IMAGE:
                 continue
@@ -53,8 +53,8 @@ class ImageService(Service):
                 continue
 
             await self.core.services.attachment.attach_to_note(attachment_id, note_id)
-            task = asyncio.create_task(self.generate_image_previews(note_id, field.id, attachment_id))
-            preview_tasks.append(task)
+            task = asyncio.create_task(self.generate_image(note_id, field.id, attachment_id))
+            image_tasks.append(task)
 
     async def validate_image_attachment(self, attachment_id: UUID) -> None:
         """Validate that an attachment is a valid image file.
@@ -84,8 +84,8 @@ class ImageService(Service):
         if not is_valid_image(file_path):
             raise ValidationError(f"Attachment {attachment_id} is not a valid image file")
 
-    async def generate_image_previews(self, note_id: UUID, field_id: str, attachment_id: UUID) -> None:
-        """Generate preview images for an IMAGE field attachment.
+    async def generate_image(self, note_id: UUID, field_id: str, attachment_id: UUID) -> None:
+        """Generate image for an IMAGE field attachment.
 
         Args:
             note_id: The note ID
@@ -106,10 +106,10 @@ class ImageService(Service):
         if field.type != FieldType.IMAGE:
             raise ValidationError(f"Field '{field_id}' is not IMAGE type (got {field.type})")
 
-        await self._generate_previews_for_field(note.number, field, attachment_id)
+        await self._generate_image_for_field(note.number, field, attachment_id)
 
-    async def _generate_previews_for_field(self, note_number: int, field: SpaceField, attachment_id: UUID) -> None:
-        """Generate previews for a single IMAGE field.
+    async def _generate_image_for_field(self, note_number: int, field: SpaceField, attachment_id: UUID) -> None:
+        """Generate image for a single IMAGE field.
 
         Args:
             note_number: The note number
@@ -136,66 +136,42 @@ class ImageService(Service):
         if not attachment_path.exists():
             raise ValidationError(f"Attachment file not found: {attachment_path}")
 
-        # Generate previews
-        previews_config = field.options.get(FieldOption.PREVIEWS, {})
-        if not isinstance(previews_config, dict):
-            raise ValidationError(f"Invalid previews config for field '{field.id}': must be a dictionary")
+        # Get max_width from field options
+        max_width = field.options.get(FieldOption.MAX_WIDTH)
+        if not isinstance(max_width, int) or max_width <= 0:
+            raise ValidationError(f"Invalid max_width for field '{field.id}': must be a positive integer")
 
-        previews_base_path = self.core.config.previews_path
+        image_path = get_image_path(self.core.config.images_path, space.slug, note_number, field.id)
 
-        for preview_key, preview_config in previews_config.items():
-            if not isinstance(preview_config, dict):
-                continue
+        # Skip if image already exists
+        if image_path.exists():
+            logger.debug("Image already exists, skipping", image_path=str(image_path), field_id=field.id)
+            return
 
-            max_width = preview_config.get("max_width")
-            if not isinstance(max_width, int) or max_width <= 0:
-                continue
+        try:
+            width, height = generate_image(attachment_path, image_path, max_width)
+            logger.info("Generated image", field_id=field.id, attachment_id=attachment_id, width=width, height=height)
+        except Exception:
+            logger.exception(
+                "Failed to generate image",
+                field_id=field.id,
+                attachment_path=str(attachment_path),
+                image_path=str(image_path),
+            )
 
-            preview_path = get_preview_path(previews_base_path, space.slug, note_number, attachment.number, field.id, preview_key)
-
-            # Skip if preview already exists
-            if preview_path.exists():
-                logger.debug(
-                    "Preview already exists, skipping",
-                    preview_path=str(preview_path),
-                    field_id=field.id,
-                    preview_key=preview_key,
-                )
-                continue
-
-            try:
-                width, height = generate_preview(attachment_path, preview_path, max_width)
-                logger.info(
-                    "Generated preview",
-                    field_id=field.id,
-                    preview_key=preview_key,
-                    attachment_id=attachment_id,
-                    width=width,
-                    height=height,
-                )
-            except Exception:
-                logger.exception(
-                    "Failed to generate preview",
-                    field_id=field.id,
-                    preview_key=preview_key,
-                    attachment_path=str(attachment_path),
-                    preview_path=str(preview_path),
-                )
-
-    async def get_image_preview_path(self, space_id: UUID, note_number: int, field_id: str, preview_key: str) -> Path:
-        """Get file path for preview image download.
+    async def get_image_path(self, space_id: UUID, note_number: int, field_id: str) -> Path:
+        """Get file path for IMAGE field download.
 
         Args:
             space_id: Space ID
             note_number: Note number
             field_id: Field ID
-            preview_key: Preview size key (e.g., "thumbnail", "medium")
 
         Returns:
-            File path to preview image
+            File path to image
 
         Raises:
-            NotFoundError: If note, field, or preview not found
+            NotFoundError: If note, field, or image not found
             ValidationError: If field is not IMAGE type or has no attachment
         """
         note = await self.core.services.note.get_note_by_number(space_id, note_number)
@@ -212,26 +188,22 @@ class ImageService(Service):
         if attachment_id is None or not isinstance(attachment_id, UUID):
             raise NotFoundError(f"Note {note_number} has no attachment for field '{field_id}'")
 
-        attachment = await self.core.services.attachment.get_attachment(attachment_id)
+        image_path = get_image_path(self.core.config.images_path, space.slug, note.number, field_id)
 
-        preview_path = get_preview_path(
-            self.core.config.previews_path, space.slug, note.number, attachment.number, field_id, preview_key
-        )
+        if not image_path.exists():
+            raise NotFoundError("Image not found")
 
-        if not preview_path.exists():
-            raise NotFoundError(f"Preview not found: {preview_key}")
+        return image_path
 
-        return preview_path
-
-    def delete_previews_by_space(self, space_id: UUID) -> None:
-        """Delete all image previews for a space from filesystem.
+    def delete_images_by_space(self, space_id: UUID) -> None:
+        """Delete all images for a space from filesystem.
 
         Args:
-            space_id: Space ID to delete previews for
+            space_id: Space ID to delete images for
         """
         space = self.core.services.space.get_space(space_id)
-        previews_folder = Path(self.core.config.previews_path) / space.slug
+        images_folder = Path(self.core.config.images_path) / space.slug
 
-        if previews_folder.exists():
-            shutil.rmtree(previews_folder)
-            logger.debug("Deleted previews folder", path=str(previews_folder))
+        if images_folder.exists():
+            shutil.rmtree(images_folder)
+            logger.debug("Deleted images folder", path=str(images_folder))

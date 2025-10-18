@@ -220,11 +220,11 @@ class App:
         await self._core.services.access.ensure_admin(auth_token)
         space = self._resolve_space(space_slug)
 
-        # Delete in order: comments first (most dependent), then notes, attachments, previews, counters, and finally the space
+        # Delete in order: comments first (most dependent), then notes, attachments, images, counters, and finally the space
         await self._core.services.comment.delete_comments_by_space(space.id)
         await self._core.services.note.delete_notes_by_space(space.id)
         await self._core.services.attachment.delete_attachments_by_space(space.id)
-        self._core.services.image.delete_previews_by_space(space.id)
+        self._core.services.image.delete_images_by_space(space.id)
         await self._core.services.counter.delete_counters_by_space(space.id)
         await self._core.services.space.delete_space(space.id)
 
@@ -373,17 +373,15 @@ class App:
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         return await self._core.services.attachment.list_note_attachments(note.id)
 
-    async def get_image_preview_path(
-        self, auth_token: AuthToken, space_slug: str, note_number: int, field_id: str, preview_key: str
-    ) -> Path:
-        """Get preview image file path for IMAGE field (members only).
+    async def get_image_path(self, auth_token: AuthToken, space_slug: str, note_number: int, field_id: str) -> Path:
+        """Get image file path for IMAGE field (members only).
 
         Returns:
-            File path to preview image
+            File path to image
         """
         space = self._resolve_space(space_slug)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
-        return await self._core.services.image.get_image_preview_path(space.id, note_number, field_id, preview_key)
+        return await self._core.services.image.get_image_path(space.id, note_number, field_id)
 
     # === Private resolver methods ===
     def _resolve_space(self, slug: str) -> Space:

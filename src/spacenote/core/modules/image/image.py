@@ -1,20 +1,20 @@
-"""Image preview generation and path utilities."""
+"""Image generation and path utilities for IMAGE field type."""
 
 from pathlib import Path
 
 from PIL import Image
 
 
-def generate_preview(source: Path, destination: Path, max_width: int) -> tuple[int, int]:
+def generate_image(source: Path, destination: Path, max_width: int) -> tuple[int, int]:
     """Resize image to max_width while maintaining aspect ratio, save as WebP.
 
     Args:
         source: Path to the original image file
-        destination: Path where the preview should be saved
-        max_width: Maximum width for the preview image
+        destination: Path where the image should be saved
+        max_width: Maximum width for the image
 
     Returns:
-        Tuple of (width, height) of the generated preview
+        Tuple of (width, height) of the generated image
 
     Raises:
         OSError: If image cannot be opened or saved
@@ -39,23 +39,19 @@ def generate_preview(source: Path, destination: Path, max_width: int) -> tuple[i
         return new_width, new_height
 
 
-def get_preview_path(
-    previews_base_path: str, space_slug: str, note_number: int, attachment_number: int, field_id: str, preview_key: str
-) -> Path:
-    """Calculate the storage path for an image preview.
+def get_image_path(images_base_path: str, space_slug: str, note_number: int, field_id: str) -> Path:
+    """Calculate the storage path for an IMAGE field.
 
     Args:
-        previews_base_path: Base directory for all previews
+        images_base_path: Base directory for all images
         space_slug: Space slug
         note_number: Note number within the space
-        attachment_number: Attachment number
         field_id: Field identifier
-        preview_key: Preview configuration key (e.g., "thumbnail", "medium")
 
     Returns:
-        Full path where the preview should be stored
+        Full path where the image should be stored
     """
-    return Path(previews_base_path) / space_slug / str(note_number) / f"{attachment_number}__{field_id}__{preview_key}"
+    return Path(images_base_path) / space_slug / str(note_number) / field_id
 
 
 def is_valid_image(source: Path) -> bool:
