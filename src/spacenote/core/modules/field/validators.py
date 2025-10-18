@@ -392,17 +392,7 @@ class TagsValidator(FieldValidator):
             return None
 
         tags = [tag.strip() for tag in raw_value.split(",") if tag.strip()]
-
-        if FieldOption.VALUES in field.options:
-            allowed_values = field.options[FieldOption.VALUES]
-            if not isinstance(allowed_values, list):
-                raise ValidationError("Invalid field configuration: VALUES must be a list")
-            invalid_tags = [tag for tag in tags if tag not in allowed_values]
-            if invalid_tags:
-                raise ValidationError(
-                    f"Invalid tags for field '{field.id}': {', '.join(invalid_tags)}. Allowed values: {', '.join(allowed_values)}"
-                )
-        return tags
+        return list(dict.fromkeys(tags))
 
     def _validate_type_specific_field_definition(self, field: SpaceField) -> SpaceField:
         return field
