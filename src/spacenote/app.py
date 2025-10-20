@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from importlib.metadata import version
 from pathlib import Path
 
 from spacenote.config import Config
@@ -7,8 +8,8 @@ from spacenote.core.core import Core
 from spacenote.core.modules.attachment.models import Attachment, AttachmentFileInfo
 from spacenote.core.modules.comment.models import Comment
 from spacenote.core.modules.export.models import ExportData
-from spacenote.core.modules.field.models import SpaceField
-from spacenote.core.modules.filter.models import Filter
+from spacenote.core.modules.field.models import FieldType, SpaceField
+from spacenote.core.modules.filter.models import FIELD_TYPE_OPERATORS, Filter, FilterOperator
 from spacenote.core.modules.llm.models import LLMLog, ParsedApiCall
 from spacenote.core.modules.note.models import Note
 from spacenote.core.modules.session.models import AuthToken
@@ -150,6 +151,21 @@ class App:
         """Change password for current user."""
         current_user = await self._core.services.access.ensure_authenticated(auth_token)
         await self._core.services.user.change_password(current_user.id, old_password, new_password)
+
+    async def get_field_operators(self, auth_token: AuthToken) -> dict[FieldType, list[FilterOperator]]:
+        """Get valid operators for each field type (requires authentication)."""
+        await self._core.services.access.ensure_authenticated(auth_token)
+        return {field_type: list(operators) for field_type, operators in FIELD_TYPE_OPERATORS.items()}
+
+    async def get_version(self, auth_token: AuthToken) -> dict[str, str]:
+        """Get version information (requires authentication)."""
+        await self._core.services.access.ensure_authenticated(auth_token)
+        return {
+            "version": version("spacenote"),
+            "git_commit_hash": self._core.config.git_commit_hash,
+            "git_commit_date": self._core.config.git_commit_date,
+            "build_time": self._core.config.build_time,
+        }
 
     async def add_space_member(self, auth_token: AuthToken, space_slug: str, username: str) -> Space:
         """Add a member to a space (members only)."""
