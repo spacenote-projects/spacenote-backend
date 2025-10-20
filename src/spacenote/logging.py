@@ -27,6 +27,12 @@ def setup_logging(debug: bool) -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)  # Used by telegram library
     logging.getLogger("httpcore").setLevel(logging.WARNING)  # Used by httpx
 
+    # Suppress verbose PIL logs
+    logging.getLogger("PIL").setLevel(logging.WARNING)
+
+    # Suppress verbose multipart parser logs
+    logging.getLogger("python_multipart.multipart").setLevel(logging.INFO)
+
     # Base processors for all environments
     processors: list[structlog.types.Processor] = [
         structlog.stdlib.filter_by_level,

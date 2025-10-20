@@ -3,6 +3,9 @@
 from pathlib import Path
 
 from PIL import Image
+from pillow_heif import register_heif_opener  # type: ignore[import-untyped]
+
+register_heif_opener()
 
 
 def generate_image(source: Path, destination: Path, max_width: int) -> tuple[int, int]:

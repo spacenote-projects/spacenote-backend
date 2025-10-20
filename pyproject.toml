@@ -9,6 +9,7 @@ dependencies = [
     "itsdangerous~=2.2.0",
     "litellm~=1.78.2",
     "pillow~=12.0.0",
+    "pillow-heif~=1.1.1",
     "pydantic-settings~=2.11.0",
     "pymongo~=4.15.3",
     "python-dotenv~=1.1.1",
