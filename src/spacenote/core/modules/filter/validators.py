@@ -57,6 +57,7 @@ def validate_datetime_value(field: SpaceField, value: FieldValueType) -> datetim
     if isinstance(value, str):
         datetime_formats = [
             "%Y-%m-%dT%H:%M:%S",
+            "%Y-%m-%dT%H:%M",
             "%Y-%m-%d %H:%M:%S",
             "%Y-%m-%d",
             "%Y-%m-%dT%H:%M:%S.%f",

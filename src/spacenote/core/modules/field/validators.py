@@ -422,6 +422,7 @@ class DateTimeValidator(FieldValidator):
         # Try common datetime formats
         for fmt in [
             "%Y-%m-%dT%H:%M:%S",
+            "%Y-%m-%dT%H:%M",
             "%Y-%m-%d %H:%M:%S",
             "%Y-%m-%d",
             "%Y-%m-%dT%H:%M:%S.%f",

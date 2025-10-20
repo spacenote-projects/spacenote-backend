@@ -16,7 +16,25 @@ class CreateNoteRequest(BaseModel):
 
     raw_fields: dict[str, str] = Field(
         ...,
-        description="Field values as raw strings (will be parsed according to field types)",
+        description=(
+            "Field values as raw strings (will be parsed according to field types).\n\n"
+            "**Datetime fields** accept these formats:\n"
+            "- `2025-10-20T10:31` (ISO without seconds)\n"
+            "- `2025-10-20T10:31:00` (ISO with seconds)\n"
+            "- `2025-10-20T10:31:00.123456` (ISO with microseconds)\n"
+            "- `2025-10-20T10:31:00Z` (ISO with Z suffix)\n"
+            "- `2025-10-20 10:31:00` (space-separated)\n"
+            "- `2025-10-20` (date only, time defaults to 00:00:00)\n"
+            "- `$now` (special value for current UTC time)\n\n"
+            "**Other field types**:\n"
+            "- String/Markdown: Any text value\n"
+            "- Boolean: `true`, `false`, `1`, `0`, `yes`, `no`, `on`, `off`\n"
+            "- Int/Float: Numeric values as strings (e.g., `42`, `3.14`)\n"
+            "- Select: Must match one of the allowed values\n"
+            "- Tags: Comma-separated values (e.g., `tag1,tag2,tag3`)\n"
+            "- User: Username, user ID (UUID), or `$me` for current user\n"
+            "- Image: Attachment UUID"
+        ),
     )
 
     model_config = {
@@ -40,7 +58,25 @@ class UpdateNoteFieldsRequest(BaseModel):
 
     raw_fields: dict[str, str] = Field(
         ...,
-        description="Field values to update as raw strings. Only provided fields will be updated (partial update).",
+        description=(
+            "Field values to update as raw strings. Only provided fields will be updated (partial update).\n\n"
+            "**Datetime fields** accept these formats:\n"
+            "- `2025-10-20T10:31` (ISO without seconds)\n"
+            "- `2025-10-20T10:31:00` (ISO with seconds)\n"
+            "- `2025-10-20T10:31:00.123456` (ISO with microseconds)\n"
+            "- `2025-10-20T10:31:00Z` (ISO with Z suffix)\n"
+            "- `2025-10-20 10:31:00` (space-separated)\n"
+            "- `2025-10-20` (date only, time defaults to 00:00:00)\n"
+            "- `$now` (special value for current UTC time)\n\n"
+            "**Other field types**:\n"
+            "- String/Markdown: Any text value\n"
+            "- Boolean: `true`, `false`, `1`, `0`, `yes`, `no`, `on`, `off`\n"
+            "- Int/Float: Numeric values as strings (e.g., `42`, `3.14`)\n"
+            "- Select: Must match one of the allowed values\n"
+            "- Tags: Comma-separated values (e.g., `tag1,tag2,tag3`)\n"
+            "- User: Username, user ID (UUID), or `$me` for current user\n"
+            "- Image: Attachment UUID"
+        ),
     )
 
     model_config = {
