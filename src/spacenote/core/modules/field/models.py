@@ -42,6 +42,7 @@ class SpecialValue(StrEnum):
     """Special values for fields."""
 
     ME = "$me"  # Represents the current logged-in user (for user fields)
+    NOW = "$now"  # Represents the current datetime (for datetime fields)
 
 
 class SpaceField(BaseModel):

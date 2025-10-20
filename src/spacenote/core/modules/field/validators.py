@@ -1,7 +1,7 @@
 """Field validator implementations using ABC pattern."""
 
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from spacenote.core.modules.field.models import FieldOption, FieldType, FieldValueType, SpaceField, SpecialValue
@@ -404,6 +404,9 @@ class DateTimeValidator(FieldValidator):
     def parse_value(self, field: SpaceField, raw_value: str | None) -> FieldValueType:
         if raw_value is None:
             if field.default is not None:
+                # Handle special value $now
+                if field.default == SpecialValue.NOW:
+                    return datetime.now(UTC)
                 return field.default
             if field.required:
                 raise ValidationError(f"Required field '{field.id}' has no value")
@@ -411,6 +414,10 @@ class DateTimeValidator(FieldValidator):
 
         if raw_value == "" and not field.required:
             return None
+
+        # Handle special value $now
+        if raw_value == SpecialValue.NOW:
+            return datetime.now(UTC)
 
         # Try common datetime formats
         for fmt in [
@@ -427,6 +434,9 @@ class DateTimeValidator(FieldValidator):
         raise ValidationError(f"Invalid datetime format for field '{field.id}': {raw_value}")
 
     def _validate_type_specific_field_definition(self, field: SpaceField) -> SpaceField:
+        # Allow special value $now as default
+        if field.default == SpecialValue.NOW:
+            return field
         return field
 
 
