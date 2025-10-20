@@ -55,7 +55,9 @@ class ExportSpace(BaseModel):
     fields: list[SpaceField]
     list_fields: list[str]
     hidden_create_fields: list[str]
+    comment_editable_fields: list[str]
     filters: list[Filter]
+    default_filter: str | None
     templates: SpaceTemplates
     telegram: ExportTelegramConfig | None = Field(None, description="Telegram integration configuration (excludes credentials)")
 

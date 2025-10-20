@@ -66,7 +66,9 @@ class ExportService(Service):
             fields=space.fields,
             list_fields=space.list_fields,
             hidden_create_fields=space.hidden_create_fields,
+            comment_editable_fields=space.comment_editable_fields,
             filters=space.filters,
+            default_filter=space.default_filter,
             templates=space.templates,
             telegram=export_telegram,
         )
@@ -276,11 +278,21 @@ class ExportService(Service):
             await self.core.services.space.update_hidden_create_fields(space.id, export_data.space.hidden_create_fields)
             logger.info("import_hidden_create_fields", space_id=space.id, count=len(export_data.space.hidden_create_fields))
 
+        # Import comment_editable_fields if present
+        if export_data.space.comment_editable_fields:
+            await self.core.services.space.update_comment_editable_fields(space.id, export_data.space.comment_editable_fields)
+            logger.info("import_comment_editable_fields", space_id=space.id, count=len(export_data.space.comment_editable_fields))
+
         # Import filters if present
         if export_data.space.filters:
             for filter_def in export_data.space.filters:
                 await self.core.services.filter.add_filter_to_space(space.id, filter_def)
             logger.info("import_filters", space_id=space.id, count=len(export_data.space.filters))
+
+        # Import default_filter if present (must be after filters are imported)
+        if export_data.space.default_filter:
+            await self.core.services.space.update_default_filter(space.id, export_data.space.default_filter)
+            logger.info("import_default_filter", space_id=space.id, filter_id=export_data.space.default_filter)
 
         # Import telegram integration if present
         if export_data.space.telegram:
