@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 
 from spacenote.app import App
@@ -59,9 +60,15 @@ def create_fastapi_app(app_instance: App, config: Config) -> FastAPI:
         )
 
     # Health check endpoint (at root level, not versioned)
-    @app.get("/health")
-    async def health_check() -> dict[str, str]:
-        return {"status": "healthy"}
+    @app.get("/health", response_model=None)
+    async def health_check() -> dict[str, str] | JSONResponse:
+        db_healthy = await app_instance.check_database_health()
+        if db_healthy:
+            return {"status": "healthy", "database": "connected"}
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unhealthy", "database": "disconnected"},
+        )
 
     # API v1 routes
     app.include_router(auth_router, prefix="/api/v1")

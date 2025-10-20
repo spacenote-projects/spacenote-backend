@@ -32,6 +32,15 @@ class App:
         async with self._core.lifespan():
             yield
 
+    async def check_database_health(self) -> bool:
+        """Check if database is available (no authentication required)."""
+        try:
+            await self._core.mongo_client.admin.command("ping")
+        except Exception:
+            return False
+        else:
+            return True
+
     async def is_auth_token_valid(self, auth_token: AuthToken) -> bool:
         """Check if authentication token is valid."""
         return await self._core.services.session.is_auth_token_valid(auth_token)
