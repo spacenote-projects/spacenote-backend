@@ -429,7 +429,7 @@ class DateTimeValidator(FieldValidator):
             "%Y-%m-%dT%H:%M:%SZ",
         ]:
             try:
-                return datetime.strptime(raw_value, fmt)  # noqa: DTZ007
+                return datetime.strptime(raw_value, fmt).replace(tzinfo=UTC)
             except ValueError:
                 continue
         raise ValidationError(f"Invalid datetime format for field '{field.id}': {raw_value}")

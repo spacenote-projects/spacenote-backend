@@ -18,7 +18,7 @@ class CreateNoteRequest(BaseModel):
         ...,
         description=(
             "Field values as raw strings (will be parsed according to field types).\n\n"
-            "**Datetime fields** accept these formats:\n"
+            "**Datetime fields** accept these formats (all in UTC timezone):\n"
             "- `2025-10-20T10:31` (ISO without seconds)\n"
             "- `2025-10-20T10:31:00` (ISO with seconds)\n"
             "- `2025-10-20T10:31:00.123456` (ISO with microseconds)\n"
@@ -26,6 +26,10 @@ class CreateNoteRequest(BaseModel):
             "- `2025-10-20 10:31:00` (space-separated)\n"
             "- `2025-10-20` (date only, time defaults to 00:00:00)\n"
             "- `$now` (special value for current UTC time)\n\n"
+            "⚠️ **Important**: All datetime values must be in UTC timezone. "
+            "Timezone offsets (e.g., `+03:00`, `-05:00`) are not supported. "
+            "All datetime values in responses are returned with `+00:00` suffix to indicate UTC "
+            "(e.g., `2025-10-20T10:31:00+00:00`).\n\n"
             "**Other field types**:\n"
             "- String/Markdown: Any text value\n"
             "- Boolean: `true`, `false`, `1`, `0`, `yes`, `no`, `on`, `off`\n"
@@ -60,22 +64,7 @@ class UpdateNoteFieldsRequest(BaseModel):
         ...,
         description=(
             "Field values to update as raw strings. Only provided fields will be updated (partial update).\n\n"
-            "**Datetime fields** accept these formats:\n"
-            "- `2025-10-20T10:31` (ISO without seconds)\n"
-            "- `2025-10-20T10:31:00` (ISO with seconds)\n"
-            "- `2025-10-20T10:31:00.123456` (ISO with microseconds)\n"
-            "- `2025-10-20T10:31:00Z` (ISO with Z suffix)\n"
-            "- `2025-10-20 10:31:00` (space-separated)\n"
-            "- `2025-10-20` (date only, time defaults to 00:00:00)\n"
-            "- `$now` (special value for current UTC time)\n\n"
-            "**Other field types**:\n"
-            "- String/Markdown: Any text value\n"
-            "- Boolean: `true`, `false`, `1`, `0`, `yes`, `no`, `on`, `off`\n"
-            "- Int/Float: Numeric values as strings (e.g., `42`, `3.14`)\n"
-            "- Select: Must match one of the allowed values\n"
-            "- Tags: Comma-separated values (e.g., `tag1,tag2,tag3`)\n"
-            "- User: Username, user ID (UUID), or `$me` for current user\n"
-            "- Image: Attachment UUID"
+            "See the `createNote` operation for detailed format examples and requirements for each field type."
         ),
     )
 

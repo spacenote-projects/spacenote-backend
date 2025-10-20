@@ -1,6 +1,6 @@
 """Filter validation utilities."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from spacenote.core.modules.field.models import FieldOption, FieldType, FieldValueType, SpaceField, SpecialValue
@@ -65,7 +65,7 @@ def validate_datetime_value(field: SpaceField, value: FieldValueType) -> datetim
         ]
         for fmt in datetime_formats:
             try:
-                return datetime.strptime(value, fmt)  # noqa: DTZ007
+                return datetime.strptime(value, fmt).replace(tzinfo=UTC)
             except ValueError:
                 continue
         raise ValidationError(f"Invalid datetime format for filter on field '{field.id}': {value}")

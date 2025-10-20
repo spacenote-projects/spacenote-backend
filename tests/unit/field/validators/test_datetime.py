@@ -227,3 +227,34 @@ class TestDateTimeFieldEdgeCases:
         assert result.hour == 0
         assert result.minute == 0
         assert result.second == 0
+
+
+class TestDateTimeTimezoneRestrictions:
+    """Tests to verify that timezone offsets are not supported."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self, mock_space, mock_members):
+        """Set up validator for timezone restriction tests."""
+        self.validator = DateTimeValidator(mock_space, mock_members)
+        self.field = SpaceField(id="event_time", type=FieldType.DATETIME, required=True)
+        self.validated_field = self.validator.validate_field_definition(self.field)
+
+    def test_positive_timezone_offset_rejected(self):
+        """Test that positive timezone offsets (+03:00) are rejected."""
+        with pytest.raises(ValidationError, match="Invalid datetime format"):
+            self.validator.parse_value(self.validated_field, "2025-10-20T14:30:00+03:00")
+
+    def test_negative_timezone_offset_rejected(self):
+        """Test that negative timezone offsets (-05:00) are rejected."""
+        with pytest.raises(ValidationError, match="Invalid datetime format"):
+            self.validator.parse_value(self.validated_field, "2025-10-20T14:30:00-05:00")
+
+    def test_utc_offset_notation_rejected(self):
+        """Test that +00:00 UTC notation is rejected (must use Z or no suffix)."""
+        with pytest.raises(ValidationError, match="Invalid datetime format"):
+            self.validator.parse_value(self.validated_field, "2025-10-20T14:30:00+00:00")
+
+    def test_short_timezone_offset_rejected(self):
+        """Test that short timezone offsets (+03) are rejected."""
+        with pytest.raises(ValidationError, match="Invalid datetime format"):
+            self.validator.parse_value(self.validated_field, "2025-10-20T14:30:00+03")
