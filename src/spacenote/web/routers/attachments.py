@@ -1,4 +1,6 @@
-from fastapi import APIRouter, UploadFile
+from typing import Annotated
+
+from fastapi import APIRouter, Query, UploadFile
 from fastapi.responses import FileResponse, Response
 
 from spacenote.core.modules.attachment.models import Attachment
@@ -75,7 +77,7 @@ async def download_attachment(
     attachment_number: int,
     app: AppDep,
     auth_token: AuthTokenDep,
-    output_format: str | None = None,
+    output_format: Annotated[str | None, Query(alias="format")] = None,
     option: str | None = None,
 ) -> FileResponse | Response:
     if output_format is not None and output_format != "webp":
