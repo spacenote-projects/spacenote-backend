@@ -266,12 +266,10 @@ class App:
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         return await self._core.services.export.export_space(space_slug, include_data)
 
-    async def import_space(
-        self, auth_token: AuthToken, export_data: ExportData, new_slug: str | None = None, create_missing_users: bool = False
-    ) -> Space:
+    async def import_space(self, auth_token: AuthToken, export_data: ExportData, new_slug: str | None = None) -> Space:
         """Import a space configuration (authenticated only)."""
         current_user = await self._core.services.access.ensure_authenticated(auth_token)
-        return await self._core.services.export.import_space(export_data, new_slug, create_missing_users, current_user.id)
+        return await self._core.services.export.import_space(export_data, new_slug, current_user.id)
 
     async def remove_field_from_space(self, auth_token: AuthToken, space_slug: str, field_id: str) -> None:
         """Remove field from space (members only)."""

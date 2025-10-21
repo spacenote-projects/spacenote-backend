@@ -42,6 +42,18 @@ class ExportComment(BaseModel):
     edited_at: datetime | None = None
 
 
+class ExportAttachment(BaseModel):
+    """Attachment representation for export without system-specific IDs."""
+
+    number: int = Field(..., description="Attachment number within the space")
+    note_number: int | None = Field(..., description="Number of the note this attachment belongs to (None for space-level)")
+    username: str = Field(..., description="Username of uploader (not UUID)")
+    filename: str
+    size: int
+    mime_type: str
+    created_at: datetime
+
+
 class ExportSpace(BaseModel):
     """Space representation for export without system-specific IDs."""
 
@@ -71,5 +83,6 @@ class ExportData(BaseModel):
     space: ExportSpace
     notes: list[ExportNote] | None = Field(None, description="Notes data (when include_data=true)")
     comments: list[ExportComment] | None = Field(None, description="Comments data (when include_data=true)")
+    attachments: list[ExportAttachment] | None = Field(None, description="Attachments data (when include_data=true)")
     exported_at: datetime
     spacenote_version: str

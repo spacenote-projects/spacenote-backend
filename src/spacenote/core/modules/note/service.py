@@ -133,6 +133,18 @@ class NoteService(Service):
             offset=offset,
         )
 
+    async def get_space_notes(self, space_id: UUID) -> list[Note]:
+        """Get all notes for a space (for export).
+
+        Args:
+            space_id: The space ID to get notes from
+
+        Returns:
+            List of all notes ordered by number ascending
+        """
+        cursor = self._collection.find({"space_id": space_id}).sort("number", 1)
+        return await Note.list_cursor(cursor)
+
     async def get_note(self, note_id: UUID) -> Note:
         """Get note by ID."""
         doc = await self._collection.find_one({"_id": note_id})

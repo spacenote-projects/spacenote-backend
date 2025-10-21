@@ -162,6 +162,18 @@ class AttachmentService(Service):
         cursor = self._collection.find({"note_id": note_id}).sort("created_at", -1)
         return await Attachment.list_cursor(cursor)
 
+    async def list_space_attachments(self, space_id: UUID) -> list[Attachment]:
+        """List all attachments for a space.
+
+        Args:
+            space_id: Space ID to get attachments for
+
+        Returns:
+            List of attachments ordered by number ascending
+        """
+        cursor = self._collection.find({"space_id": space_id}).sort("number", 1)
+        return await Attachment.list_cursor(cursor)
+
     async def get_attachment_file_info(self, space_id: UUID, attachment_number: int) -> AttachmentFileInfo:
         """Get file info for attachment download.
 

@@ -51,6 +51,5 @@ async def import_space(
     app: AppDep,
     auth_token: AuthTokenDep,
     new_slug: Annotated[str | None, Query(description="Optional new slug to rename the space on import")] = None,
-    create_missing_users: Annotated[bool, Query(description="Create users that don't exist (with random passwords)")] = False,
 ) -> Space:
-    return await app.import_space(auth_token, export_data, new_slug, create_missing_users)
+    return await app.import_space(auth_token, export_data, new_slug)
