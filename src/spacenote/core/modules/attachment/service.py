@@ -1,3 +1,4 @@
+import asyncio
 import shutil
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,7 @@ from spacenote.core.modules.attachment.storage import (
     write_attachment_file,
 )
 from spacenote.core.modules.counter.models import CounterType
+from spacenote.core.modules.image.image import WebpOptions, convert_image_to_webp
 from spacenote.errors import NotFoundError, ValidationError
 
 logger = structlog.get_logger(__name__)
@@ -192,6 +194,46 @@ class AttachmentService(Service):
             raise NotFoundError(f"Attachment file not found: space_id={space_id}, number={attachment_number}")
 
         return AttachmentFileInfo(file_path=file_path, filename=attachment.filename, mime_type=attachment.mime_type)
+
+    async def convert_attachment_to_webp(self, space_id: UUID, attachment_number: int, options: WebpOptions) -> bytes:
+        """Convert attachment to WebP format.
+
+        Args:
+            space_id: Space ID
+            attachment_number: Sequential attachment number
+            options: WebP conversion options
+
+        Returns:
+            WebP image data as bytes
+
+        Raises:
+            NotFoundError: If attachment or file not found
+            ValidationError: If attachment is not an image
+            OSError: If image cannot be converted
+        """
+        attachment = await self.get_attachment_by_number(space_id, attachment_number)
+
+        if not attachment.mime_type.startswith("image/"):
+            raise ValidationError(f"Attachment {attachment_number} is not an image (mime_type: {attachment.mime_type})")
+
+        space = self.core.services.space.get_space(space_id)
+
+        note_number = None
+        if attachment.note_id is not None:
+            note = await self.core.services.note.get_note(attachment.note_id)
+            note_number = note.number
+
+        file_path = get_attachment_file_path(
+            attachments_path=self.core.config.attachments_path,
+            space_slug=space.slug,
+            attachment_number=attachment.number,
+            note_number=note_number,
+        )
+
+        if not file_path.exists():
+            raise NotFoundError(f"Attachment file not found: space_id={space_id}, number={attachment_number}")
+
+        return await asyncio.to_thread(convert_image_to_webp, file_path, options)
 
     async def delete_attachments_by_space(self, space_id: UUID) -> None:
         """Delete all attachments for a space from database and filesystem.

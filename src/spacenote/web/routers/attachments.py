@@ -1,7 +1,9 @@
 from fastapi import APIRouter, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
 from spacenote.core.modules.attachment.models import Attachment
+from spacenote.core.modules.image.image import parse_webp_option
+from spacenote.errors import ValidationError
 from spacenote.web.deps import AppDep, AuthTokenDep
 from spacenote.web.openapi import ErrorResponse
 
@@ -53,15 +55,36 @@ async def list_note_attachments(space_slug: str, note_number: int, app: AppDep, 
 @router.get(
     "/spaces/{space_slug}/attachments/{attachment_number}",
     summary="Download attachment",
-    description="Download the original attachment file by number.",
+    description=(
+        "Download attachment file by number. "
+        "Use `?format=webp` to convert images to WebP format. "
+        "Optional `&option=max_width:800` to resize during conversion."
+    ),
     operation_id="downloadAttachment",
+    response_model=None,
     responses={
         200: {"description": "Attachment file"},
+        400: {"model": ErrorResponse, "description": "Invalid format parameter"},
         401: {"model": ErrorResponse, "description": "Not authenticated"},
         403: {"model": ErrorResponse, "description": "Not a member of this space"},
         404: {"model": ErrorResponse, "description": "Space or attachment not found"},
     },
 )
-async def download_attachment(space_slug: str, attachment_number: int, app: AppDep, auth_token: AuthTokenDep) -> FileResponse:
+async def download_attachment(
+    space_slug: str,
+    attachment_number: int,
+    app: AppDep,
+    auth_token: AuthTokenDep,
+    output_format: str | None = None,
+    option: str | None = None,
+) -> FileResponse | Response:
+    if output_format is not None and output_format != "webp":
+        raise ValidationError(f"Unsupported format: {output_format}")
+
+    if output_format == "webp":
+        options = parse_webp_option(option)
+        webp_data = await app.convert_attachment_to_webp(auth_token, space_slug, attachment_number, options)
+        return Response(content=webp_data, media_type="image/webp")
+
     file_info = await app.get_attachment_file_info(auth_token, space_slug, attachment_number)
     return FileResponse(path=file_info.file_path, media_type=file_info.mime_type, filename=file_info.filename)

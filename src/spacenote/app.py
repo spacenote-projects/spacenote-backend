@@ -10,6 +10,7 @@ from spacenote.core.modules.comment.models import Comment
 from spacenote.core.modules.export.models import ExportData
 from spacenote.core.modules.field.models import FieldType, SpaceField
 from spacenote.core.modules.filter.models import FIELD_TYPE_OPERATORS, Filter, FilterOperator
+from spacenote.core.modules.image.image import WebpOptions
 from spacenote.core.modules.llm.models import LLMLog, ParsedApiCall
 from spacenote.core.modules.note.models import Note
 from spacenote.core.modules.session.models import AuthToken
@@ -397,6 +398,18 @@ class App:
         space, note = await self._resolve_note(space_slug, note_number)
         await self._core.services.access.ensure_space_member(auth_token, space.id)
         return await self._core.services.attachment.list_note_attachments(note.id)
+
+    async def convert_attachment_to_webp(
+        self, auth_token: AuthToken, space_slug: str, attachment_number: int, options: WebpOptions
+    ) -> bytes:
+        """Convert attachment to WebP format (members only).
+
+        Returns:
+            WebP image data as bytes
+        """
+        space = self._resolve_space(space_slug)
+        await self._core.services.access.ensure_space_member(auth_token, space.id)
+        return await self._core.services.attachment.convert_attachment_to_webp(space.id, attachment_number, options)
 
     async def get_image_path(self, auth_token: AuthToken, space_slug: str, note_number: int, field_id: str) -> Path:
         """Get image file path for IMAGE field (members only).
