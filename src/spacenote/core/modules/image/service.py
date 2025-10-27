@@ -40,21 +40,28 @@ class ImageService(Service):
 
     async def _process_note_images_async(self, note_id: UUID) -> None:
         """Internal async implementation of process_note_images."""
-        note = await self.core.services.note.get_note(note_id)
-        space = self.core.services.space.get_space(note.space_id)
+        try:
+            note = await self.core.services.note.get_note(note_id)
+            space = self.core.services.space.get_space(note.space_id)
 
-        image_tasks = []
-        for field in space.fields:
-            if field.type != FieldType.IMAGE:
-                continue
+            image_tasks = []
+            for field in space.fields:
+                if field.type != FieldType.IMAGE:
+                    continue
 
-            attachment_id = note.fields.get(field.id)
-            if attachment_id is None or not isinstance(attachment_id, UUID):
-                continue
+                attachment_id = note.fields.get(field.id)
+                if attachment_id is None or not isinstance(attachment_id, UUID):
+                    continue
 
-            await self.core.services.attachment.attach_to_note(attachment_id, note_id)
-            task = asyncio.create_task(self.generate_image(note_id, field.id, attachment_id))
-            image_tasks.append(task)
+                # Only attach if not already attached to this note (idempotent)
+                attachment = await self.core.services.attachment.get_attachment(attachment_id)
+                if attachment.note_id != note_id:
+                    await self.core.services.attachment.attach_to_note(attachment_id, note_id)
+
+                task = asyncio.create_task(self.generate_image(note_id, field.id, attachment_id))
+                image_tasks.append(task)
+        except Exception:
+            logger.exception("Failed to process note images", note_id=note_id)
 
     async def validate_image_attachment(self, attachment_id: UUID) -> None:
         """Validate that an attachment is a valid image file.

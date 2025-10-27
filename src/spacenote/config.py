@@ -16,6 +16,7 @@ class Config(BaseSettings):
     llm_api_key: str = ""
     attachments_path: str  # Directory path for storing file attachments
     images_path: str  # Directory path for storing IMAGE field images
+    timeout_keep_alive: int = 600  # Keep HTTP connections alive for up to 10 minutes (for large uploads)
     # Build metadata injected during Docker build via environment variables
     git_commit_hash: str = "unknown"  # Git commit hash at build time (for debugging deployments)
     git_commit_date: str = "unknown"  # Git commit date at build time (for tracking release timeline)
